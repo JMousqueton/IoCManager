@@ -175,34 +175,6 @@ def download_geolite2_city(license_key=None, verify_ssl=True):
     """Download MaxMind GeoLite2 City database"""
     return download_geolite2_database('GeoLite2-City', license_key, verify_ssl)
 
-
-def convert_to_pyasn_format(source_dir):
-    """
-    Convert MaxMind CSV to pyasn .dat format
-
-    Note: This is a simplified conversion. For production use,
-    consider using pyasn's built-in conversion tools or pre-built databases.
-    """
-    print("\n" + "="*60)
-    print("CONVERTING TO PYASN FORMAT")
-    print("="*60)
-
-    print("\n⚠ Manual conversion required:")
-    print("\nOption 1: Use pyasn_util_convert.py (recommended)")
-    print("  Download RIB file from RouteViews or RIPE RIS")
-    print("  Run: pyasn_util_convert.py --single <rib_file> ipasn.dat")
-
-    print("\nOption 2: Use MaxMind GeoLite2 directly in your code")
-    print(f"  Files available in: {source_dir}")
-    print("  Use maxminddb library instead of pyasn")
-
-    print("\nOption 3: Use IP2Location or other free databases")
-    print("  Visit: https://www.ip2location.com/free/visitor-blocker")
-
-    print("\nFor this application, we'll use ipwhois as fallback")
-    print("for AS lookups when MaxMind database is not available.")
-
-
 def create_dummy_db():
     """Create a dummy database file for development"""
     data_dir = Path('data')
@@ -279,8 +251,6 @@ def main():
             license_key=args.license_key,
             verify_ssl=verify_ssl
         )
-        if source_dir:
-            convert_to_pyasn_format(source_dir)
 
     elif choice == '2':
         print("\n" + "="*60)

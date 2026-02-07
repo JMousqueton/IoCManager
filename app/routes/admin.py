@@ -1,9 +1,11 @@
 """Admin routes - System administration"""
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
 from functools import wraps
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 from app import db
 from app.models.tag import Tag
 from app.models.audit import AuditLog
@@ -328,8 +330,50 @@ def save_api_keys():
         db.session.add(log)
         db.session.commit()
 
-        flash('API keys saved successfully. Restart the application for changes to take effect.', 'success')
+        flash('API keys saved successfully. Click "Reload Configuration" to apply changes without restart.', 'success')
     except Exception as e:
         flash(f'Error saving API keys: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/reload', methods=['POST'])
+@login_required
+@admin_required
+def reload_config():
+    """Reload configuration from .env file without restarting the application"""
+    try:
+        # Reload .env file
+        load_dotenv(override=True)
+
+        # Update Flask config with new environment variables
+        config_keys_to_update = {
+            'VIRUSTOTAL_API_KEY': os.getenv('VIRUSTOTAL_API_KEY', ''),
+            'URLSCAN_API_KEY': os.getenv('URLSCAN_API_KEY', ''),
+            'MAXMIND_LICENSE_KEY': os.getenv('MAXMIND_LICENSE_KEY', ''),
+            'VIRUSTOTAL_NO_SSL_CHECK': os.getenv('VIRUSTOTAL_NO_SSL_CHECK', 'False').lower() == 'true',
+            'URLSCAN_NO_SSL_CHECK': os.getenv('URLSCAN_NO_SSL_CHECK', 'False').lower() == 'true',
+            'URL_ENRICHMENT_NO_SSL_CHECK': os.getenv('URL_ENRICHMENT_NO_SSL_CHECK', 'False').lower() == 'true',
+            'DOMAIN_ENRICHMENT_NO_SSL_CHECK': os.getenv('DOMAIN_ENRICHMENT_NO_SSL_CHECK', 'False').lower() == 'true',
+        }
+
+        # Update current app config
+        for key, value in config_keys_to_update.items():
+            current_app.config[key] = value
+
+        # Audit log
+        log = AuditLog(
+            user_id=current_user.id,
+            action='RELOAD',
+            resource_type='Configuration',
+            resource_id=None,
+            details='Reloaded configuration from .env file'
+        )
+        db.session.add(log)
+        db.session.commit()
+
+        flash('Configuration reloaded successfully! API keys are now active.', 'success')
+    except Exception as e:
+        flash(f'Error reloading configuration: {str(e)}', 'danger')
 
     return redirect(url_for('admin.api_keys'))
