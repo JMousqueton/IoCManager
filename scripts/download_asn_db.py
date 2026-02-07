@@ -13,6 +13,10 @@ import requests
 import argparse
 import urllib3
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -47,15 +51,20 @@ def download_geolite2_database(edition_id, license_key=None, verify_ssl=True):
 
     # Get license key
     if not license_key:
-        print("\nMaxMind requires a free license key to download GeoLite2 databases.")
-        print("If you don't have one, register at:")
-        print("https://www.maxmind.com/en/geolite2/signup\n")
+        # Try to get from environment variable
+        license_key = os.getenv('MAXMIND_LICENSE_KEY', '').strip()
 
-        license_key = input("Enter your MaxMind license key (or 'skip' to skip download): ").strip()
+        if not license_key or license_key == 'your-maxmind-license-key-here':
+            print("\nMaxMind requires a free license key to download GeoLite2 databases.")
+            print("If you don't have one, register at:")
+            print("https://www.maxmind.com/en/geolite2/signup")
+            print("\nYou can set it in .env file: MAXMIND_LICENSE_KEY=your-key-here\n")
 
-        if license_key.lower() == 'skip':
-            print(f"\n⚠ Skipping {edition_id} download")
-            return None
+            license_key = input("Enter your MaxMind license key (or 'skip' to skip download): ").strip()
+
+            if license_key.lower() == 'skip':
+                print(f"\n⚠ Skipping {edition_id} download")
+                return None
 
     # Create data directory
     data_dir = Path('data')
@@ -231,6 +240,11 @@ def main():
         type=str,
         help='MaxMind license key (skip interactive prompt)'
     )
+    parser.add_argument(
+        '--auto',
+        action='store_true',
+        help='Automatic mode: download all databases using API key from .env (option 4)'
+    )
     args = parser.parse_args()
 
     print("\n" + "="*60)
@@ -240,17 +254,22 @@ def main():
     print("\nThis script helps you set up GeoIP databases for enriching")
     print("IP address indicators with geographic and AS information.")
 
-    print("\n\nOptions:")
-    print("1. Download MaxMind GeoLite2 ASN (CSV format)")
-    print("2. Download MaxMind GeoLite2 Country (MMDB format)")
-    print("3. Download MaxMind GeoLite2 City (MMDB format)")
-    print("4. Download ALL databases (ASN, Country, City)")
-    print("5. Create dummy ASN database (development only)")
-    print("6. Skip (you can run this script later)")
-
-    choice = input("\nEnter your choice (1-6): ").strip()
-
     verify_ssl = not args.NoSSLCheck
+
+    # Auto mode: automatically download all databases
+    if args.auto:
+        print("\n🤖 AUTO MODE: Downloading all databases using .env configuration")
+        choice = '4'
+    else:
+        print("\n\nOptions:")
+        print("1. Download MaxMind GeoLite2 ASN (CSV format)")
+        print("2. Download MaxMind GeoLite2 Country (MMDB format)")
+        print("3. Download MaxMind GeoLite2 City (MMDB format)")
+        print("4. Download ALL databases (ASN, Country, City)")
+        print("5. Create dummy ASN database (development only)")
+        print("6. Skip (you can run this script later)")
+
+        choice = input("\nEnter your choice (1-6): ").strip()
 
     if choice == '1':
         print("\n" + "="*60)
@@ -289,14 +308,27 @@ def main():
         # Get license key once if not provided
         license_key = args.license_key
         if not license_key:
-            print("\nMaxMind requires a free license key to download GeoLite2 databases.")
-            print("If you don't have one, register at:")
-            print("https://www.maxmind.com/en/geolite2/signup\n")
-            license_key = input("Enter your MaxMind license key (or 'skip' to skip download): ").strip()
+            # Try to get from environment variable
+            license_key = os.getenv('MAXMIND_LICENSE_KEY', '').strip()
 
-            if license_key.lower() == 'skip':
-                print("\n⚠ Skipping database downloads")
-                license_key = None
+            if not license_key or license_key == 'your-maxmind-license-key-here':
+                # In auto mode, exit with error if no valid key
+                if args.auto:
+                    print("\n✗ ERROR: No valid MAXMIND_LICENSE_KEY found in .env file")
+                    print("Please set MAXMIND_LICENSE_KEY in .env or use --license-key argument")
+                    sys.exit(1)
+
+                print("\nMaxMind requires a free license key to download GeoLite2 databases.")
+                print("If you don't have one, register at:")
+                print("https://www.maxmind.com/en/geolite2/signup")
+                print("\nYou can set it in .env file: MAXMIND_LICENSE_KEY=your-key-here\n")
+                license_key = input("Enter your MaxMind license key (or 'skip' to skip download): ").strip()
+
+                if license_key.lower() == 'skip':
+                    print("\n⚠ Skipping database downloads")
+                    license_key = None
+            else:
+                print(f"\n✓ Using license key from .env: {license_key[:8]}...{license_key[-4:]}")
 
         if license_key:
             # Download ASN
