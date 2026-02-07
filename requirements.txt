@@ -16,7 +16,7 @@ alembic==1.13.2
 python-dotenv==1.0.1
 
 # HTTP & API Clients
-requests==2.32.3
+requests==2.32.4
 
 # IP & AS Lookup
 pyasn==1.6.2
