@@ -32,7 +32,7 @@ dnspython==2.6.1
 gunicorn==22.0.0
 
 # Security
-cryptography==42.0.8
+cryptography==44.0.1
 
 # Utilities
 python-dateutil==2.9.0
