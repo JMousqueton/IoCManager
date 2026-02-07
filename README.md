@@ -8,9 +8,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 
 ## 🎬 Demo
 
-<video src=".github/IoCManager.webm" controls="controls" style="max-width: 100%;">
-  Your browser does not support the video tag. <a href=".github/IoCManager.webm">Download the demo video</a>.
-</video>
+![IOC Manager Demo](.github/IoCManager.gif)
 
 ## 🌟 Features
 
