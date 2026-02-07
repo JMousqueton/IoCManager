@@ -5,9 +5,6 @@ env/
 ENV/
 .venv
 
-# Docs
-docs/
-
 # Python
 __pycache__/
 *.py[cod]
