@@ -1,0 +1,38 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#1a1a2e"/>
+
+  <!-- Outer glow -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="rgba(13, 110, 253, 0.3)" stroke-width="8"/>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="rgba(13, 110, 253, 0.5)" stroke-width="4"/>
+
+  <!-- Shield shape -->
+  <defs>
+    <linearGradient id="shield-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d6efd;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a58ca;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Main shield -->
+  <path d="M 256 80 L 160 120 L 160 240 C 160 320 200 390 256 420 C 312 390 352 320 352 240 L 352 120 Z"
+        fill="url(#shield-gradient)"
+        stroke="#ffffff"
+        stroke-width="4"/>
+
+  <!-- Checkmark inside shield -->
+  <path d="M 220 240 L 240 270 L 300 200"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="12"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- IOC text -->
+  <text x="256" y="470"
+        font-family="Arial, sans-serif"
+        font-size="80"
+        font-weight="bold"
+        fill="#ffffff"
+        text-anchor="middle">IOC</text>
+</svg>
