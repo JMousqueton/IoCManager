@@ -40,4 +40,4 @@ python-dateutil==2.9.0
 # Markdown & Content
 markdown==3.6
 bleach==6.1.0
-pymdown-extensions==10.8.1
+pymdown-extensions==10.16.1
