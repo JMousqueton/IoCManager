@@ -5,6 +5,9 @@ env/
 ENV/
 .venv
 
+# Docs
+docs/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -71,3 +74,4 @@ wheels/
 *.swp
 *~
 .claude/settings.local.json
+docs/DOMAIN_ENRICHMENT.md

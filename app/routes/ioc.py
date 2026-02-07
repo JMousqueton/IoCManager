@@ -386,19 +386,44 @@ def enrich(id):
         except Exception as e:
             flash(f'Error enriching IOC: {str(e)}', 'danger')
 
-    # Handle URL enrichment (URLScan.io + VirusTotal)
+    # Handle URL enrichment (URLScan.io + VirusTotal + Header Analysis)
     elif ioc_type_name in ['URL']:
         from app.services.urlscan import URLScanService
         from app.services.virustotal import VTService
+        from app.services.url_enrichment import URLEnrichmentService
 
         url_value = ioc.value.strip()
         combined_enrichment = {
             'urlscan': None,
             'virustotal': None,
+            'url_headers': None,
             'status': 'partial'  # Will be updated based on results
         }
         success_count = 0
         messages = []
+
+        # Query URL Headers/Server Info
+        try:
+            url_enrichment_service = URLEnrichmentService()
+            url_header_data = url_enrichment_service.enrich_url(url_value)
+
+            if url_header_data and url_header_data.get('status') == 'success':
+                combined_enrichment['url_headers'] = url_header_data
+                success_count += 1
+
+                server = url_header_data.get('server', 'Unknown')
+                status_code = url_header_data.get('status_code', 'N/A')
+                technologies = url_header_data.get('technologies', [])
+                tech_str = ', '.join(technologies[:3]) if technologies else 'None detected'
+                messages.append(f'Headers: HTTP {status_code}, Server: {server[:30]}, Tech: {tech_str}')
+
+            elif url_header_data and url_header_data.get('status') == 'error':
+                error_msg = url_header_data.get('error', 'Unknown error')
+                messages.append(f'Headers: Error - {error_msg[:50]}')
+
+        except Exception as e:
+            logger.error(f"URL header enrichment error: {e}")
+            messages.append(f'Headers: Error - {str(e)[:50]}')
 
         # Query URLScan.io
         try:
@@ -525,6 +550,57 @@ def enrich(id):
 
         else:
             flash(f'Could not retrieve enrichment data. {" | ".join(messages)}', 'warning')
+
+    # Handle Domain enrichment (WHOIS, DNS records)
+    elif ioc_type_name in ['Domain']:
+        from app.services.domain_enrichment import DomainEnrichmentService
+
+        domain_value = ioc.value.strip()
+
+        try:
+            enrichment_service = DomainEnrichmentService()
+            enrichment_data = enrichment_service.enrich_domain(domain_value)
+
+            if enrichment_data and enrichment_data.get('status') == 'success':
+                # Store enrichment data in JSON format
+                ioc.set_enrichment(enrichment_data)
+                db.session.commit()
+
+                # Log the enrichment
+                from app.models.audit import AuditLog
+                log = AuditLog(
+                    user_id=current_user.id,
+                    action='ENRICH',
+                    resource_type='IOC',
+                    resource_id=ioc.id,
+                    details=f'Enriched domain with WHOIS and DNS data'
+                )
+                db.session.add(log)
+                db.session.commit()
+
+                # Build success message
+                messages = []
+                if enrichment_data.get('registrar'):
+                    messages.append(f"Registrar: {enrichment_data['registrar']}")
+                if enrichment_data.get('registration_date'):
+                    messages.append(f"Registered: {enrichment_data['registration_date'][:10]}")
+                if enrichment_data.get('mx_records'):
+                    messages.append(f"MX records: {len(enrichment_data['mx_records'])}")
+                if enrichment_data.get('txt_records'):
+                    messages.append(f"TXT records: {len(enrichment_data['txt_records'])}")
+
+                flash(f'Domain enriched successfully. {" | ".join(messages)}', 'success')
+
+            elif enrichment_data and enrichment_data.get('status') == 'error':
+                error_msg = enrichment_data.get('error', 'Unknown error')
+                flash(f'Domain enrichment error: {error_msg}', 'danger')
+
+            else:
+                flash('Could not retrieve domain enrichment data.', 'warning')
+
+        except Exception as e:
+            logger.error(f"Domain enrichment error for {domain_value}: {e}")
+            flash(f'Error enriching domain: {str(e)}', 'danger')
 
     else:
         flash(f'Enrichment not supported for IOC type: {ioc_type_name}', 'warning')

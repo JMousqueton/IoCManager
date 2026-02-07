@@ -153,3 +153,15 @@ def register_template_filters(app):
         """Strip markdown formatting and return plain text"""
         from app.utils.markdown import strip_markdown
         return strip_markdown(text, max_length)
+
+    @app.template_filter('txt_record_brand')
+    def txt_record_brand_filter(txt_record):
+        """Detect brand/service from TXT record"""
+        from app.utils.txt_record_parser import get_txt_record_brand
+        return get_txt_record_brand(txt_record)
+
+    @app.template_filter('whois_status')
+    def whois_status_filter(status):
+        """Parse WHOIS status code to human-readable format"""
+        from app.utils.whois_status_parser import parse_whois_status
+        return parse_whois_status(status)

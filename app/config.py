@@ -39,6 +39,14 @@ class Config:
     ASN_DATABASE_PATH = os.getenv('ASN_DATABASE_PATH', os.path.join(basedir, 'data', 'ipasn.dat'))
     ASN_CACHE_DAYS = int(os.getenv('ASN_CACHE_DAYS', 30))
 
+    # Domain Enrichment
+    DOMAIN_ENRICHMENT_CACHE_DAYS = int(os.getenv('DOMAIN_ENRICHMENT_CACHE_DAYS', 30))
+    DOMAIN_ENRICHMENT_NO_SSL_CHECK = os.getenv('DOMAIN_ENRICHMENT_NO_SSL_CHECK', 'False').lower() == 'true'
+
+    # URL Enrichment
+    URL_ENRICHMENT_CACHE_DAYS = int(os.getenv('URL_ENRICHMENT_CACHE_DAYS', 7))
+    URL_ENRICHMENT_NO_SSL_CHECK = os.getenv('URL_ENRICHMENT_NO_SSL_CHECK', 'False').lower() == 'true'
+
     # Email
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'localhost')
     MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
