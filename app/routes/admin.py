@@ -364,7 +364,7 @@ def reload_config():
         # Audit log
         log = AuditLog(
             user_id=current_user.id,
-            action='RELOAD',
+            action='UPDATE',
             resource_type='Configuration',
             resource_id=None,
             details='Reloaded configuration from .env file'
