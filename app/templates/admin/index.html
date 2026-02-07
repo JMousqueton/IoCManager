@@ -45,12 +45,13 @@
             <i class="bi bi-tags"></i> Tags Management
         </a>
     </li>
-    <!-- Future tabs can be added here -->
-    <!-- <li class="nav-item" role="presentation">
-        <a class="nav-link" href="#" role="tab">
-            <i class="bi bi-people"></i> Users
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'api-keys' %}active{% endif %}"
+           href="{{ url_for('admin.api_keys') }}"
+           role="tab">
+            <i class="bi bi-key"></i> API Keys
         </a>
-    </li> -->
+    </li>
 </ul>
 
 <!-- Tab Content -->
@@ -182,6 +183,106 @@
                     <i class="bi bi-info-circle"></i> No tags found. Create your first tag using the "Add Tag" button above.
                 </div>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- API Keys Tab -->
+    {% if active_tab == 'api-keys' %}
+    <div class="tab-pane fade show active" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-key"></i> API Keys Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> Changes to API keys require an application restart to take effect.
+                    Keys are stored in the <code>.env</code> file.
+                </div>
+
+                <form method="POST" action="{{ url_for('admin.save_api_keys') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- VirusTotal API Key -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-shield-check"></i> VirusTotal
+                        </h6>
+                        <div class="mb-3">
+                            <label class="form-label">API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control font-monospace"
+                                       name="virustotal_key"
+                                       value="{{ api_keys.VIRUSTOTAL_API_KEY }}"
+                                       placeholder="Enter VirusTotal API key">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePassword(this)" title="Show/Hide">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Get your API key at: <a href="https://www.virustotal.com/gui/my-apikey" target="_blank">VirusTotal API</a>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- URLScan.io API Key -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-search"></i> URLScan.io
+                        </h6>
+                        <div class="mb-3">
+                            <label class="form-label">API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control font-monospace"
+                                       name="urlscan_key"
+                                       value="{{ api_keys.URLSCAN_API_KEY }}"
+                                       placeholder="Enter URLScan.io API key">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePassword(this)" title="Show/Hide">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Get your API key at: <a href="https://urlscan.io/user/profile/" target="_blank">URLScan.io Profile</a>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- MaxMind License Key -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-geo-alt"></i> MaxMind GeoIP
+                        </h6>
+                        <div class="mb-3">
+                            <label class="form-label">License Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control font-monospace"
+                                       name="maxmind_key"
+                                       value="{{ api_keys.MAXMIND_LICENSE_KEY }}"
+                                       placeholder="Enter MaxMind license key">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePassword(this)" title="Show/Hide">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Get your license key at: <a href="https://www.maxmind.com/en/account/login" target="_blank">MaxMind Account</a>
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save API Keys
+                        </button>
+                        <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -318,6 +419,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     {% endfor %}
+
+    // Toggle password visibility for API keys
+    function togglePassword(button) {
+        const input = button.parentElement.querySelector('input');
+        const icon = button.querySelector('i');
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
 });
 </script>
 {% endblock %}
