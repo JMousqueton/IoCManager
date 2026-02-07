@@ -205,7 +205,25 @@
                 <div class="row mb-3">
                     <div class="col-md-3"><strong>Value:</strong></div>
                     <div class="col-md-9">
-                        <code class="bg-light p-2 d-block">{{ ioc.value }}</code>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if ioc.ioc_type.name == 'URL' and enrichment and enrichment.url_headers %}
+                                {% set url_data = enrichment.url_headers %}
+                                {% if url_data.favicon_path %}
+                                    <img src="{{ url_for('main.serve_cached_file', filename=url_data.favicon_path.replace('cached/', '')) }}"
+                                         alt="Favicon"
+                                         style="width: 20px; height: 20px;"
+                                         onerror="this.style.display='none'"
+                                         title="Site favicon">
+                                {% elif url_data.favicon_url %}
+                                    <img src="{{ url_data.favicon_url }}"
+                                         alt="Favicon"
+                                         style="width: 20px; height: 20px;"
+                                         onerror="this.style.display='none'"
+                                         title="Site favicon">
+                                {% endif %}
+                            {% endif %}
+                            <code class="bg-light p-2 d-block flex-grow-1">{{ ioc.value }}</code>
+                        </div>
                     </div>
                 </div>
 
