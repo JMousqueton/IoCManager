@@ -8,6 +8,8 @@ import logging
 import requests
 import ssl
 import socket
+import os
+from pathlib import Path
 from datetime import datetime, timedelta
 from flask import current_app
 from urllib.parse import urlparse
@@ -31,12 +33,13 @@ class URLEnrichmentService:
         """
         self.cache_days = cache_days or current_app.config.get('URL_ENRICHMENT_CACHE_DAYS', 7)
 
-    def enrich_url(self, url):
+    def enrich_url(self, url, ioc_id=None):
         """
         Get enrichment data for a URL
 
         Args:
             url: URL to enrich
+            ioc_id: IOC ID for saving favicon locally (optional)
 
         Returns:
             dict: Enrichment data including headers, server info, security headers
@@ -52,7 +55,7 @@ class URLEnrichmentService:
 
         # Cache miss - perform enrichment
         logger.info(f"Cache miss for URL: {url} - performing enrichment")
-        enrichment_data = self._perform_enrichment(url)
+        enrichment_data = self._perform_enrichment(url, ioc_id)
 
         # Cache the results
         if enrichment_data and enrichment_data.get('status') != 'error':
@@ -84,6 +87,7 @@ class URLEnrichmentService:
                     'response_time': cache_entry.response_time,
                     'content_type': cache_entry.content_type,
                     'favicon_url': cache_entry.favicon_url,
+                    'favicon_path': cache_entry.favicon_path,
                     'ssl_certificate': json.loads(cache_entry.ssl_certificate) if cache_entry.ssl_certificate else {},
                     'cached_at': cache_entry.cached_at.isoformat(),
                     'status': 'success'
@@ -95,7 +99,7 @@ class URLEnrichmentService:
             logger.error(f"Error checking cache for URL {url}: {e}")
             return None
 
-    def _perform_enrichment(self, url):
+    def _perform_enrichment(self, url, ioc_id=None):
         """Perform actual URL enrichment"""
         try:
             result = {
@@ -109,6 +113,7 @@ class URLEnrichmentService:
                 'response_time': None,
                 'content_type': None,
                 'favicon_url': None,
+                'favicon_path': None,
                 'ssl_certificate': {},
                 'status': 'success'
             }
@@ -160,7 +165,13 @@ class URLEnrichmentService:
                 result['redirect_url'] = response.url
 
             # Extract favicon
-            result['favicon_url'] = self._extract_favicon(url, response)
+            favicon_url = self._extract_favicon(url, response)
+            result['favicon_url'] = favicon_url
+
+            # Download favicon locally if found and IOC ID provided
+            if favicon_url and ioc_id:
+                favicon_path = self._download_favicon(favicon_url, ioc_id)
+                result['favicon_path'] = favicon_path
 
             # Extract SSL certificate info for HTTPS
             if url.lower().startswith('https://'):
@@ -333,6 +344,64 @@ class URLEnrichmentService:
             logger.error(f"Error extracting favicon for {url}: {e}")
             return None
 
+    def _download_favicon(self, favicon_url, ioc_id):
+        """
+        Download favicon to local cache directory
+
+        Args:
+            favicon_url: URL of the favicon
+            ioc_id: IOC ID to use as filename
+
+        Returns:
+            str: Local path to favicon or None if download failed
+        """
+        try:
+            # Create cached/favicon directory if it doesn't exist
+            cache_dir = Path('cached/favicon')
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            # Get file extension from URL or content-type
+            verify_ssl = not current_app.config.get('URL_ENRICHMENT_NO_SSL_CHECK', False)
+            response = requests.get(favicon_url, timeout=10, verify=verify_ssl)
+
+            if response.status_code != 200:
+                logger.warning(f"Failed to download favicon: HTTP {response.status_code}")
+                return None
+
+            # Determine file extension
+            content_type = response.headers.get('Content-Type', '')
+            extension = '.ico'  # Default
+
+            if 'png' in content_type:
+                extension = '.png'
+            elif 'jpeg' in content_type or 'jpg' in content_type:
+                extension = '.jpg'
+            elif 'gif' in content_type:
+                extension = '.gif'
+            elif 'svg' in content_type:
+                extension = '.svg'
+            elif 'webp' in content_type:
+                extension = '.webp'
+            elif favicon_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico')):
+                # Try to get extension from URL
+                extension = '.' + favicon_url.lower().split('.')[-1].split('?')[0]
+
+            # Save favicon with IOC ID as filename
+            filename = f"{ioc_id}{extension}"
+            filepath = cache_dir / filename
+
+            with open(filepath, 'wb') as f:
+                f.write(response.content)
+
+            logger.info(f"Downloaded favicon for IOC {ioc_id}: {filepath}")
+
+            # Return relative path from app root
+            return str(filepath)
+
+        except Exception as e:
+            logger.error(f"Error downloading favicon from {favicon_url}: {e}")
+            return None
+
     def _extract_ssl_certificate(self, url):
         """Extract SSL/TLS certificate information for HTTPS URLs"""
         try:
@@ -391,6 +460,7 @@ class URLEnrichmentService:
                 'response_time': enrichment_data.get('response_time'),
                 'content_type': enrichment_data.get('content_type'),
                 'favicon_url': enrichment_data.get('favicon_url'),
+                'favicon_path': enrichment_data.get('favicon_path'),
                 'ssl_certificate': json.dumps(enrichment_data.get('ssl_certificate', {}))
             }
 

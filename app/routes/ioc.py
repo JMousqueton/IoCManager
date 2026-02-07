@@ -405,7 +405,7 @@ def enrich(id):
         # Query URL Headers/Server Info
         try:
             url_enrichment_service = URLEnrichmentService()
-            url_header_data = url_enrichment_service.enrich_url(url_value)
+            url_header_data = url_enrichment_service.enrich_url(url_value, ioc_id=ioc.id)
 
             if url_header_data and url_header_data.get('status') == 'success':
                 combined_enrichment['url_headers'] = url_header_data

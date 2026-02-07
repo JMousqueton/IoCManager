@@ -1,11 +1,12 @@
 """Main routes blueprint"""
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, send_from_directory, current_app
 from flask_login import login_required, current_user
 from app.models.ioc import IOC, IOCType
 from app.models.user import User
 from app import db
 from sqlalchemy import func
+import os
 
 main_bp = Blueprint('main', __name__)
 
@@ -46,6 +47,15 @@ def index():
                            recent_iocs=recent_iocs,
                            iocs_by_type=iocs_by_type,
                            iocs_by_severity=iocs_by_severity)
+
+
+@main_bp.route('/cached/<path:filename>')
+@login_required
+def serve_cached_file(filename):
+    """Serve cached files (favicons, etc.)"""
+    # Ensure the path is safe and within the cached directory
+    cached_dir = os.path.join(current_app.root_path, '..', 'cached')
+    return send_from_directory(cached_dir, filename)
 
 
 @main_bp.route('/about')

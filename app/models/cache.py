@@ -203,6 +203,7 @@ class URLEnrichmentCache(db.Model):
     response_time = db.Column(db.Float)
     content_type = db.Column(db.String(200))
     favicon_url = db.Column(db.String(2048))
+    favicon_path = db.Column(db.String(500))  # Local path to downloaded favicon
     ssl_certificate = db.Column(db.Text)  # JSON
     cached_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False, index=True)
@@ -226,6 +227,7 @@ class URLEnrichmentCache(db.Model):
             response_time=enrichment_data.get('response_time'),
             content_type=enrichment_data.get('content_type'),
             favicon_url=enrichment_data.get('favicon_url'),
+            favicon_path=enrichment_data.get('favicon_path'),
             ssl_certificate=enrichment_data.get('ssl_certificate'),
             expires_at=expires_at
         )
@@ -243,6 +245,7 @@ class URLEnrichmentCache(db.Model):
             'response_time': self.response_time,
             'content_type': self.content_type,
             'favicon_url': self.favicon_url,
+            'favicon_path': self.favicon_path,
             'ssl_certificate': self.ssl_certificate,
             'cached_at': self.cached_at.isoformat() if self.cached_at else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None
