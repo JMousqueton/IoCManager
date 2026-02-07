@@ -6,6 +6,12 @@
 
 A comprehensive web-based platform for managing, enriching, and analyzing Indicators of Compromise (IOCs). Built for Security Operations Centers (SOCs), Computer Emergency Response Teams (CERTs), and threat intelligence teams.
 
+## 🎬 Demo
+
+<video src=".github/IoCManager.webm" controls="controls" style="max-width: 100%;">
+  Your browser does not support the video tag. <a href=".github/IoCManager.webm">Download the demo video</a>.
+</video>
+
 ## 🌟 Features
 
 ### Core Functionality
