@@ -205,27 +205,25 @@
                 <div class="row mb-3">
                     <div class="col-md-3"><strong>Value:</strong></div>
                     <div class="col-md-9">
-                        <div class="d-flex align-items-center gap-2">
-                            {% if ioc.ioc_type.name == 'URL' and enrichment and enrichment.url_headers %}
-                                {% set url_data = enrichment.url_headers %}
-                                {% if url_data.favicon_path %}
-                                    <img src="{{ url_for('main.serve_cached_file', filename=url_data.favicon_path.replace('cached/', '')) }}"
-                                         alt="Favicon"
-                                         style="width: 20px; height: 20px;"
-                                         onerror="this.style.display='none'"
-                                         title="Site favicon">
-                                {% elif url_data.favicon_url %}
-                                    <img src="{{ url_data.favicon_url }}"
-                                         alt="Favicon"
-                                         style="width: 20px; height: 20px;"
-                                         onerror="this.style.display='none'"
-                                         title="Site favicon">
-                                {% endif %}
-                            {% endif %}
-                            <code class="bg-light p-2 d-block flex-grow-1">{{ ioc.value }}</code>
-                        </div>
+                        <code class="bg-light p-2 d-block">{{ ioc.value }}</code>
                     </div>
                 </div>
+
+                <!-- Favicon SHA256 Hash (for URL IOCs) -->
+                {% if ioc.ioc_type.name == 'URL' and enrichment and enrichment.url_headers and enrichment.url_headers.favicon_sha256 %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Favicon Hash:</strong></div>
+                    <div class="col-md-9">
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="bg-light p-2 d-block text-monospace" style="font-size: 0.85em;">{{ enrichment.url_headers.favicon_sha256 }}</code>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="navigator.clipboard.writeText('{{ enrichment.url_headers.favicon_sha256 }}')" title="Copy to clipboard">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">SHA256 hash of the site's favicon</small>
+                    </div>
+                </div>
+                {% endif %}
 
                 <div class="row mb-3">
                     <div class="col-md-3"><strong>Description:</strong></div>
@@ -936,23 +934,38 @@
                 </div>
                 {% endif %}
 
-                <!-- Favicon -->
-                {% if url_data.favicon_path or url_data.favicon_url %}
+                <!-- Favicon Hash -->
+                {% if url_data.favicon_sha256 or url_data.favicon_url %}
                 <hr class="my-3">
-                <h6 class="text-primary mb-3"><i class="bi bi-image"></i> Favicon</h6>
+                <h6 class="text-primary mb-3"><i class="bi bi-fingerprint"></i> Favicon</h6>
+
+                {% if url_data.favicon_sha256 %}
                 <div class="row mb-3">
-                    <div class="col-md-12">
+                    <div class="col-md-3"><strong>SHA256 Hash:</strong></div>
+                    <div class="col-md-9">
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="bg-light p-2 text-monospace small flex-grow-1">{{ url_data.favicon_sha256 }}</code>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="navigator.clipboard.writeText('{{ url_data.favicon_sha256 }}')" title="Copy to clipboard">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
                         {% if url_data.favicon_path %}
-                            <!-- Use local cached favicon -->
-                            <img src="{{ url_for('main.serve_cached_file', filename=url_data.favicon_path.replace('cached/', '')) }}" alt="Favicon" style="width: 32px; height: 32px; margin-right: 10px;" onerror="this.style.display='none'">
-                            <span class="text-muted small"><i class="bi bi-check-circle text-success"></i> Cached locally</span>
-                        {% elif url_data.favicon_url %}
-                            <!-- Use external favicon URL -->
-                            <img src="{{ url_data.favicon_url }}" alt="Favicon" style="width: 32px; height: 32px; margin-right: 10px;" onerror="this.style.display='none'">
-                            <a href="{{ url_data.favicon_url }}" target="_blank" class="text-muted small">{{ url_data.favicon_url }}</a>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="bi bi-check-circle text-success"></i> Cached locally at {{ url_data.favicon_path }}
+                        </small>
                         {% endif %}
                     </div>
                 </div>
+                {% endif %}
+
+                {% if url_data.favicon_url %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Source URL:</strong></div>
+                    <div class="col-md-9">
+                        <a href="{{ url_data.favicon_url }}" target="_blank" class="text-break small">{{ url_data.favicon_url }}</a>
+                    </div>
+                </div>
+                {% endif %}
                 {% endif %}
 
                 <!-- Detected Technologies -->

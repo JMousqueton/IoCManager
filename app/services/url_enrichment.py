@@ -9,6 +9,7 @@ import requests
 import ssl
 import socket
 import os
+import hashlib
 from pathlib import Path
 from datetime import datetime, timedelta
 from flask import current_app
@@ -88,6 +89,7 @@ class URLEnrichmentService:
                     'content_type': cache_entry.content_type,
                     'favicon_url': cache_entry.favicon_url,
                     'favicon_path': cache_entry.favicon_path,
+                    'favicon_sha256': cache_entry.favicon_sha256,
                     'ssl_certificate': json.loads(cache_entry.ssl_certificate) if cache_entry.ssl_certificate else {},
                     'cached_at': cache_entry.cached_at.isoformat(),
                     'status': 'success'
@@ -114,6 +116,7 @@ class URLEnrichmentService:
                 'content_type': None,
                 'favicon_url': None,
                 'favicon_path': None,
+                'favicon_sha256': None,
                 'ssl_certificate': {},
                 'status': 'success'
             }
@@ -170,8 +173,10 @@ class URLEnrichmentService:
 
             # Download favicon locally if found and IOC ID provided
             if favicon_url and ioc_id:
-                favicon_path = self._download_favicon(favicon_url, ioc_id)
-                result['favicon_path'] = favicon_path
+                favicon_data = self._download_favicon(favicon_url, ioc_id)
+                if favicon_data:
+                    result['favicon_path'] = favicon_data['path']
+                    result['favicon_sha256'] = favicon_data['sha256']
 
             # Extract SSL certificate info for HTTPS
             if url.lower().startswith('https://'):
@@ -346,14 +351,14 @@ class URLEnrichmentService:
 
     def _download_favicon(self, favicon_url, ioc_id):
         """
-        Download favicon to local cache directory
+        Download favicon to local cache directory and calculate SHA256 hash
 
         Args:
             favicon_url: URL of the favicon
             ioc_id: IOC ID to use as filename
 
         Returns:
-            str: Local path to favicon or None if download failed
+            dict: {'path': str, 'sha256': str} or None if download failed
         """
         try:
             # Create cached/favicon directory if it doesn't exist
@@ -367,6 +372,12 @@ class URLEnrichmentService:
             if response.status_code != 200:
                 logger.warning(f"Failed to download favicon: HTTP {response.status_code}")
                 return None
+
+            # Get file content
+            file_content = response.content
+
+            # Calculate SHA256 hash
+            sha256_hash = hashlib.sha256(file_content).hexdigest()
 
             # Determine file extension
             content_type = response.headers.get('Content-Type', '')
@@ -391,12 +402,15 @@ class URLEnrichmentService:
             filepath = cache_dir / filename
 
             with open(filepath, 'wb') as f:
-                f.write(response.content)
+                f.write(file_content)
 
-            logger.info(f"Downloaded favicon for IOC {ioc_id}: {filepath}")
+            logger.info(f"Downloaded favicon for IOC {ioc_id}: {filepath} (SHA256: {sha256_hash})")
 
-            # Return relative path from app root
-            return str(filepath)
+            # Return both path and hash
+            return {
+                'path': str(filepath),
+                'sha256': sha256_hash
+            }
 
         except Exception as e:
             logger.error(f"Error downloading favicon from {favicon_url}: {e}")
@@ -461,6 +475,7 @@ class URLEnrichmentService:
                 'content_type': enrichment_data.get('content_type'),
                 'favicon_url': enrichment_data.get('favicon_url'),
                 'favicon_path': enrichment_data.get('favicon_path'),
+                'favicon_sha256': enrichment_data.get('favicon_sha256'),
                 'ssl_certificate': json.dumps(enrichment_data.get('ssl_certificate', {}))
             }
 
