@@ -1,6 +1,6 @@
 # Flask Core
 Flask==3.0.3
-Werkzeug==3.0.3
+Werkzeug==3.1.5
 
 # Flask Extensions
 Flask-SQLAlchemy==3.1.1
