@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Total IOCs</h6>
+                        <h2 class="mb-0">{{ stats.total_iocs }}</h2>
+                    </div>
+                    <i class="bi bi-shield-check" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Active IOCs</h6>
+                        <h2 class="mb-0">{{ stats.active_iocs }}</h2>
+                    </div>
+                    <i class="bi bi-check-circle" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Critical</h6>
+                        <h2 class="mb-0">{{ stats.critical_iocs }}</h2>
+                    </div>
+                    <i class="bi bi-exclamation-triangle" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">High</h6>
+                        <h2 class="mb-0">{{ stats.high_iocs }}</h2>
+                    </div>
+                    <i class="bi bi-exclamation-circle" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent IOCs -->
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent IOCs</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Severity</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_iocs %}
+                                {% for ioc in recent_iocs %}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ ioc.ioc_type.name }}</span></td>
+                                    <td>
+                                        <a href="{{ url_for('ioc.detail', id=ioc.id) }}">
+                                            {{ ioc.value[:50] }}{% if ioc.value|length > 50 %}...{% endif %}
+                                        </a>
+                                    </td>
+                                    <td><span class="badge bg-{{ ioc.severity|severity_badge }}">{{ ioc.severity }}</span></td>
+                                    <td>{{ ioc.created_at|datetime_format('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No IOCs yet</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{{ url_for('ioc.list') }}" class="btn btn-sm btn-outline-primary">
+                    View All IOCs <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="col-md-4">
+        <!-- IOCs by Type -->
+        <div class="card shadow mb-3">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-pie-chart"></i> IOCs by Type</h6>
+            </div>
+            <div class="card-body">
+                {% if iocs_by_type %}
+                    {% for type_name, count in iocs_by_type %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ type_name }}</span>
+                        <span class="badge bg-primary">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No data available</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- IOCs by Severity -->
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> IOCs by Severity</h6>
+            </div>
+            <div class="card-body">
+                {% if iocs_by_severity %}
+                    {% for severity, count in iocs_by_severity %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ severity }}</span>
+                        <span class="badge bg-{{ severity|severity_badge }}">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

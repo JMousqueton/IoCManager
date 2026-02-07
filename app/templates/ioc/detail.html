@@ -1,0 +1,1859 @@
+{% extends "base.html" %}
+
+{% block title %}IOC Detail - IOC Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Markdown Styling */
+.markdown-body {
+    font-size: 14px;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3,
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-body h1 { font-size: 1.75rem; border-bottom: 1px solid #dee2e6; padding-bottom: 0.3rem; }
+.markdown-body h2 { font-size: 1.5rem; border-bottom: 1px solid #dee2e6; padding-bottom: 0.3rem; }
+.markdown-body h3 { font-size: 1.25rem; }
+.markdown-body h4 { font-size: 1rem; }
+.markdown-body h5 { font-size: 0.875rem; }
+.markdown-body h6 { font-size: 0.85rem; color: #6c757d; }
+
+.markdown-body p {
+    margin-bottom: 0.75rem;
+}
+
+.markdown-body a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+.markdown-body code {
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    background-color: rgba(175, 184, 193, 0.2);
+    border-radius: 6px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.markdown-body pre {
+    padding: 1rem;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.markdown-body pre code {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    word-break: normal;
+    white-space: pre;
+    border: 0;
+}
+
+.markdown-body blockquote {
+    margin: 0 0 1rem 0;
+    padding: 0 1rem;
+    color: #6c757d;
+    border-left: 0.25rem solid #dee2e6;
+}
+
+.markdown-body ul, .markdown-body ol {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+.markdown-body table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.markdown-body img {
+    max-width: 100%;
+    height: auto;
+}
+
+.markdown-body hr {
+    height: 0.25rem;
+    padding: 0;
+    margin: 1.5rem 0;
+    background-color: #dee2e6;
+    border: 0;
+}
+
+/* Markdown Preview */
+.markdown-preview {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    min-height: 100px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.markdown-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-tab {
+    padding: 0.5rem 1rem;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.markdown-tab.active {
+    background-color: white;
+    font-weight: 600;
+}
+
+.tab-content-area {
+    display: none;
+}
+
+.tab-content-area.active {
+    display: block;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h1><i class="bi bi-shield-check"></i> IOC Details</h1>
+    </div>
+    <div class="col-md-6 text-end">
+        {% if current_user.can_modify_ioc(ioc) %}
+        <a href="{{ url_for('ioc.edit', id=ioc.id) }}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        {% if ioc.ioc_type.name in ['IPv4', 'IPv6', 'SHA256', 'MD5', 'SHA1', 'URL'] %}
+        <form method="POST" action="{{ url_for('ioc.enrich', id=ioc.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-info" title="Enrich with {% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}GeoIP{% elif ioc.ioc_type.name == 'URL' %}URLScan.io{% else %}VirusTotal{% endif %} data">
+                <i class="bi bi-{% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}globe{% elif ioc.ioc_type.name == 'URL' %}search{% else %}shield-check{% endif %}"></i> Enrich IOC
+            </button>
+        </form>
+        {% endif %}
+        {% endif %}
+
+        <!-- Export STIX button -->
+        <a href="{{ url_for('ioc_export.export_single_stix', id=ioc.id) }}" class="btn btn-success" title="Export as STIX 2.1 for TAXII sharing">
+            <i class="bi bi-download"></i> Export STIX
+        </a>
+
+        <!-- Generate YARA button -->
+        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#yaraModal" onclick="generateYara({{ ioc.id }})" title="Generate YARA rule for detection">
+            <i class="bi bi-code-square"></i> Generate YARA
+        </button>
+
+        <a href="{{ url_for('ioc.list') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- IOC Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">IOC Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Type:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-secondary">{{ ioc.ioc_type.name }}</span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Value:</strong></div>
+                    <div class="col-md-9">
+                        <code class="bg-light p-2 d-block">{{ ioc.value }}</code>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Description:</strong></div>
+                    <div class="col-md-9 markdown-body">
+                        {% if ioc.description %}
+                            {{ ioc.description|markdown }}
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Severity:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{{ ioc.severity|severity_badge }}">{{ ioc.severity }}</span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Confidence:</strong></div>
+                    <div class="col-md-9">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar"
+                                 style="width: {{ ioc.confidence }}%;"
+                                 aria-valuenow="{{ ioc.confidence }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ ioc.confidence }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>TLP:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{{ ioc.tlp|tlp_badge }} text-dark">{{ ioc.tlp }}</span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Source:</strong></div>
+                    <div class="col-md-9">{{ ioc.source or 'N/A' }}</div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Status:</strong></div>
+                    <div class="col-md-9">
+                        {% if ioc.false_positive %}
+                            <span class="badge bg-warning text-dark">False Positive</span>
+                        {% elif ioc.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Tags:</strong></div>
+                    <div class="col-md-9">
+                        {% if ioc.tags %}
+                            {% for tag in ioc.tags %}
+                                <span class="badge" style="background-color: {{ tag.color }}; color: white;">{{ tag.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">No tags</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if ioc.notes %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Notes:</strong></div>
+                    <div class="col-md-9">
+                        <div class="bg-light p-3 rounded">{{ ioc.notes }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- GeoIP Enrichment -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.ip %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-globe"></i> GeoIP Enrichment</h5>
+            </div>
+            <div class="card-body">
+                {% if enrichment.continent and enrichment.continent.name %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Continent:</strong></div>
+                    <div class="col-md-9">{{ enrichment.continent.name }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.country and enrichment.country.name %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Country:</strong></div>
+                    <div class="col-md-9">
+                        {{ enrichment.country.name }}
+                        {% if enrichment.country.iso_code %}
+                            <span class="badge bg-secondary">{{ enrichment.country.iso_code }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.subdivisions %}
+                    {% for subdivision in enrichment.subdivisions %}
+                        {% if subdivision.name %}
+                        <div class="row mb-3">
+                            <div class="col-md-3"><strong>State/Region:</strong></div>
+                            <div class="col-md-9">
+                                {{ subdivision.name }}
+                                {% if subdivision.iso_code %}
+                                    <span class="badge bg-secondary">{{ subdivision.iso_code }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
+                {% if enrichment.city and enrichment.city.name %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>City:</strong></div>
+                    <div class="col-md-9">{{ enrichment.city.name }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.postal and enrichment.postal.code %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Postal Code:</strong></div>
+                    <div class="col-md-9">{{ enrichment.postal.code }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.location %}
+                    {% if enrichment.location.latitude and enrichment.location.longitude %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Coordinates:</strong></div>
+                        <div class="col-md-9">
+                            <code>{{ "%.4f"|format(enrichment.location.latitude) }}, {{ "%.4f"|format(enrichment.location.longitude) }}</code>
+                            <a href="https://www.google.com/maps?q={{ enrichment.location.latitude }},{{ enrichment.location.longitude }}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-secondary ms-2">
+                                <i class="bi bi-map"></i> View on Map
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if enrichment.location.time_zone %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Time Zone:</strong></div>
+                        <div class="col-md-9">{{ enrichment.location.time_zone }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if enrichment.location.accuracy_radius %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Accuracy:</strong></div>
+                        <div class="col-md-9">± {{ enrichment.location.accuracy_radius }} km</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                {% if enrichment.asn %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-hdd-network"></i> Network Information</h6>
+
+                {% if enrichment.asn.asn %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>ASN:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-primary">AS{{ enrichment.asn.asn }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.asn.asn_description %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Organization:</strong></div>
+                    <div class="col-md-9">{{ enrichment.asn.asn_description }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.asn.network and enrichment.asn.network.cidr %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Network:</strong></div>
+                    <div class="col-md-9"><code>{{ enrichment.asn.network.cidr }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.asn.asn_country_code %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>ASN Country:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-secondary">{{ enrichment.asn.asn_country_code }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {% if enrichment.source %}
+                <hr class="my-3">
+                <div class="row mb-0">
+                    <div class="col-md-3"><strong>Data Source:</strong></div>
+                    <div class="col-md-9"><small class="text-muted">{{ enrichment.source }}</small></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- VirusTotal Enrichment -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.status == 'success' and enrichment.hash %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> VirusTotal Scan Results</h5>
+            </div>
+            <div class="card-body">
+                <!-- Detection Summary -->
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Detection:</strong></div>
+                    <div class="col-md-9">
+                        <h5>
+                            <span class="badge bg-{% if enrichment.stats.malicious >= 5 %}danger{% elif enrichment.stats.malicious > 0 or enrichment.stats.suspicious >= 3 %}warning{% else %}success{% endif %}">
+                                {{ enrichment.detection_rate }}
+                            </span>
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Classification:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if enrichment.threat_classification == 'Malicious' %}danger{% elif enrichment.threat_classification == 'Suspicious' %}warning{% elif enrichment.threat_classification == 'Clean' %}success{% else %}secondary{% endif %}">
+                            {{ enrichment.threat_classification }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Detection Stats -->
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Malicious:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-danger">{{ enrichment.stats.malicious }}</span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Suspicious:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-warning text-dark">{{ enrichment.stats.suspicious }}</span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Undetected:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-success">{{ enrichment.stats.undetected }}</span>
+                    </div>
+                </div>
+
+                <!-- File Information -->
+                {% if enrichment.file_info %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-file-earmark-text"></i> File Information</h6>
+
+                {% if enrichment.file_info.size %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>File Size:</strong></div>
+                    <div class="col-md-9">
+                        {{ (enrichment.file_info.size / 1024 / 1024)|round(2) }} MB
+                        <span class="text-muted">({{ '{:,}'.format(enrichment.file_info.size) }} bytes)</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.file_info.type %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>File Type:</strong></div>
+                    <div class="col-md-9">{{ enrichment.file_info.type }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.file_info.magic %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Magic:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.file_info.magic }}</code></div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- File Hashes -->
+                {% if enrichment.hash.sha256 or enrichment.hash.sha1 or enrichment.hash.md5 %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-fingerprint"></i> File Hashes</h6>
+
+                {% if enrichment.hash.sha256 %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>SHA256:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.hash.sha256 }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.hash.sha1 %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>SHA1:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.hash.sha1 }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.hash.md5 %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>MD5:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.hash.md5 }}</code></div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- Top Detections -->
+                {% if enrichment.top_detections %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-bug"></i> Top Detections</h6>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>AV Engine</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detection in enrichment.top_detections %}
+                            <tr>
+                                <td>{{ detection.engine }}</td>
+                                <td>
+                                    <span class="badge bg-{% if detection.category == 'malicious' %}danger{% else %}warning{% endif %}">
+                                        {{ detection.result }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Scan Dates -->
+                {% if enrichment.last_analysis or enrichment.first_submission %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-clock"></i> Scan Information</h6>
+
+                {% if enrichment.last_analysis %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Last Scan:</strong></div>
+                    <div class="col-md-9"><small>{{ enrichment.last_analysis|string|replace('T', ' ')|truncate(19, true, '') }}</small></div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.first_submission %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>First Seen:</strong></div>
+                    <div class="col-md-9"><small>{{ enrichment.first_submission|string|replace('T', ' ')|truncate(19, true, '') }}</small></div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- MITRE ATT&CK -->
+                {% if enrichment.mitre_attack and enrichment.mitre_attack.techniques %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-shield-exclamation"></i> MITRE ATT&CK Framework</h6>
+
+                <!-- Group techniques by tactic -->
+                {% set tactics_dict = {} %}
+                {% for technique in enrichment.mitre_attack.techniques %}
+                    {% set tactic = technique.tactic or 'Unknown' %}
+                    {% if tactic not in tactics_dict %}
+                        {% set _ = tactics_dict.update({tactic: []}) %}
+                    {% endif %}
+                    {% set _ = tactics_dict[tactic].append(technique) %}
+                {% endfor %}
+
+                <!-- Display as grid with tactics as columns -->
+                <div class="row g-3">
+                    {% for tactic, techniques in tactics_dict.items() %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-danger h-100">
+                            <div class="card-header bg-danger text-white">
+                                <strong>{{ tactic }}</strong>
+                                <span class="badge bg-white text-danger float-end">{{ techniques|length }}</span>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="list-group list-group-flush">
+                                    {% for technique in techniques %}
+                                    <a href="https://attack.mitre.org/techniques/{{ technique.id.replace('.', '/') }}/"
+                                       target="_blank"
+                                       class="list-group-item list-group-item-action p-2 border-0 border-bottom"
+                                       title="{{ technique.name }}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <code class="text-danger fw-bold small">{{ technique.id }}</code>
+                                                <div class="small text-truncate" style="max-width: 250px;">
+                                                    {{ technique.name }}
+                                                </div>
+                                            </div>
+                                            <i class="bi bi-box-arrow-up-right text-muted ms-2"></i>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- VirusTotal Link -->
+                {% if enrichment.permalink %}
+                <hr class="my-3">
+                <div class="row mb-0">
+                    <div class="col-md-12">
+                        <a href="{{ enrichment.permalink }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right"></i> View Full Report on VirusTotal
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Data Source -->
+                <hr class="my-3">
+                <div class="row mb-0">
+                    <div class="col-md-3"><strong>Data Source:</strong></div>
+                    <div class="col-md-9">
+                        <small class="text-muted">VirusTotal API v3</small>
+                        {% if enrichment.cached %}
+                        <span class="badge bg-info text-dark ms-2">Cached</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- URL Enrichment (URLScan.io + VirusTotal) -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.status == 'success' and (enrichment.urlscan or enrichment.virustotal) %}
+
+        <!-- URLScan.io Results -->
+        {% if enrichment.urlscan %}
+        {% set urlscan = enrichment.urlscan %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-search"></i> URLScan.io Results</h5>
+            </div>
+            <div class="card-body">
+                <!-- Verdict Summary -->
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Verdict:</strong></div>
+                    <div class="col-md-9">
+                        <h5>
+                            <span class="badge bg-{% if urlscan.verdicts.malicious %}danger{% else %}success{% endif %}">
+                                {% if urlscan.verdicts.malicious %}Malicious{% else %}Clean{% endif %}
+                            </span>
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Score:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if urlscan.verdicts.overall >= 50 %}danger{% elif urlscan.verdicts.overall > 0 %}warning{% else %}success{% endif %}">
+                            {{ urlscan.verdicts.overall }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Categories -->
+                {% if urlscan.verdicts.categories %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Categories:</strong></div>
+                    <div class="col-md-9">
+                        {% for category in urlscan.verdicts.categories %}
+                        <span class="badge bg-warning text-dark">{{ category }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- URL Details -->
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-link-45deg"></i> URL Details</h6>
+
+                {% if urlscan.domain %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Domain:</strong></div>
+                    <div class="col-md-9"><code>{{ urlscan.domain }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if urlscan.ip %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>IP Address:</strong></div>
+                    <div class="col-md-9"><code>{{ urlscan.ip }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if urlscan.country %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Country:</strong></div>
+                    <div class="col-md-9"><span class="badge bg-secondary">{{ urlscan.country }}</span></div>
+                </div>
+                {% endif %}
+
+                {% if urlscan.server %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Server:</strong></div>
+                    <div class="col-md-9"><code>{{ urlscan.server }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if urlscan.title %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Page Title:</strong></div>
+                    <div class="col-md-9">{{ urlscan.title }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Screenshot & Report Links -->
+                <hr class="my-3">
+                <div class="row mb-2">
+                    <div class="col-md-12">
+                        <a href="{{ urlscan.screenshot }}" target="_blank" class="btn btn-sm btn-outline-secondary me-2">
+                            <i class="bi bi-image"></i> View Screenshot
+                        </a>
+                        <a href="{{ urlscan.report_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right"></i> Full Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- VirusTotal URL Results -->
+        {% if enrichment.virustotal %}
+        {% set vt = enrichment.virustotal %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> VirusTotal URL Analysis</h5>
+            </div>
+            <div class="card-body">
+                <!-- Detection Summary -->
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Detection:</strong></div>
+                    <div class="col-md-9">
+                        <h5>
+                            <span class="badge bg-{% if vt.stats.malicious > 5 %}danger{% elif vt.stats.malicious > 0 %}warning{% else %}success{% endif %}">
+                                {{ vt.detection_rate }}
+                            </span>
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Classification:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if vt.threat_classification == 'Malicious' %}danger{% elif vt.threat_classification == 'Suspicious' %}warning{% else %}success{% endif %}">
+                            {{ vt.threat_classification }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- URL Info -->
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-link-45deg"></i> URL Information</h6>
+
+                {% if vt.final_url and vt.final_url != vt.url %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Final URL:</strong></div>
+                    <div class="col-md-9"><code>{{ vt.final_url }}</code></div>
+                </div>
+                {% endif %}
+
+                {% if vt.title %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Page Title:</strong></div>
+                    <div class="col-md-9">{{ vt.title }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Statistics -->
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-bar-chart"></i> Detection Statistics</h6>
+
+                <div class="row mb-2">
+                    <div class="col-md-4"><strong>Malicious:</strong></div>
+                    <div class="col-md-8"><span class="badge bg-danger">{{ vt.stats.malicious }}</span></div>
+                </div>
+
+                <div class="row mb-2">
+                    <div class="col-md-4"><strong>Suspicious:</strong></div>
+                    <div class="col-md-8"><span class="badge bg-warning text-dark">{{ vt.stats.suspicious }}</span></div>
+                </div>
+
+                <div class="row mb-2">
+                    <div class="col-md-4"><strong>Harmless:</strong></div>
+                    <div class="col-md-8"><span class="badge bg-success">{{ vt.stats.harmless }}</span></div>
+                </div>
+
+                <div class="row mb-2">
+                    <div class="col-md-4"><strong>Undetected:</strong></div>
+                    <div class="col-md-8">{{ vt.stats.undetected }}</div>
+                </div>
+
+                <!-- Top Detections -->
+                {% if vt.top_detections %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-exclamation-triangle"></i> Top Detections</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Engine</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detection in vt.top_detections[:5] %}
+                            <tr>
+                                <td>{{ detection.engine }}</td>
+                                <td>
+                                    <span class="badge bg-{% if detection.category == 'malicious' %}danger{% else %}warning{% endif %}">
+                                        {{ detection.result }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Report Link -->
+                <hr class="my-3">
+                <div class="row mb-0">
+                    <div class="col-md-12">
+                        <a href="{{ vt.permalink }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right"></i> View Full VirusTotal Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- GeoIP Information for URL IPs -->
+        {% if enrichment.geoip %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-geo-alt"></i> IP Geolocation</h5>
+            </div>
+            <div class="card-body">
+                {% for ip, geoip in enrichment.geoip.items() %}
+                <div class="mb-3 {% if not loop.last %}pb-3 border-bottom{% endif %}">
+                    <h6 class="text-primary mb-3"><code>{{ ip }}</code></h6>
+
+                    <!-- Location Summary -->
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Location:</strong></div>
+                        <div class="col-md-9">
+                            {% if geoip.city.name %}
+                                <i class="bi bi-building"></i> {{ geoip.city.name }},
+                            {% endif %}
+                            {% if geoip.subdivisions and geoip.subdivisions[0].name %}
+                                {{ geoip.subdivisions[0].name }},
+                            {% endif %}
+                            {% if geoip.country.name %}
+                                <span class="badge bg-primary">
+                                    {{ geoip.country.iso_code }} - {{ geoip.country.name }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Coordinates -->
+                    {% if geoip.location.latitude and geoip.location.longitude %}
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Coordinates:</strong></div>
+                        <div class="col-md-9">
+                            <code>{{ "%.4f"|format(geoip.location.latitude) }}, {{ "%.4f"|format(geoip.location.longitude) }}</code>
+                            <a href="https://www.google.com/maps?q={{ geoip.location.latitude }},{{ geoip.location.longitude }}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-secondary ms-2">
+                                <i class="bi bi-map"></i> View on Map
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Timezone -->
+                    {% if geoip.location.time_zone %}
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Time Zone:</strong></div>
+                        <div class="col-md-9">{{ geoip.location.time_zone }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- ASN Information -->
+                    {% if geoip.asn %}
+                    <hr class="my-2">
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>ASN:</strong></div>
+                        <div class="col-md-9">
+                            <code>AS{{ geoip.asn.asn }}</code>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Organization:</strong></div>
+                        <div class="col-md-9">{{ geoip.asn.asn_description }}</div>
+                    </div>
+                    {% if geoip.asn.network %}
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Network:</strong></div>
+                        <div class="col-md-9"><code>{{ geoip.asn.network.cidr }}</code></div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
+                    <!-- Data Source -->
+                    <hr class="my-2">
+                    <div class="row mb-0">
+                        <div class="col-md-3"><strong>Data Source:</strong></div>
+                        <div class="col-md-9">
+                            <small class="text-muted">{{ geoip.source or 'MaxMind GeoLite2' }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <!-- Metadata -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Metadata</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Created At</small>
+                    <div>{{ ioc.created_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted">Updated At</small>
+                    <div>{{ ioc.updated_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+
+                <div class="mb-0">
+                    <small class="text-muted">Created By</small>
+                    <div>{{ ioc.creator.username }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expiration Info -->
+        {% if ioc.expires_at %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Expiration</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Expires At</small>
+                    <div>{{ ioc.expires_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+
+                {% if ioc.is_expired() %}
+                <div class="alert alert-warning mb-3">
+                    <i class="bi bi-exclamation-triangle"></i> This IOC has expired
+                </div>
+                {% else %}
+                {% set days_remaining = ((ioc.expires_at - now()).days) %}
+                <div class="mb-3">
+                    <small class="text-muted">Days Remaining</small>
+                    <div>
+                        <span class="badge bg-{% if days_remaining < 7 %}danger{% elif days_remaining < 30 %}warning{% else %}success{% endif %}">
+                            {{ days_remaining }} days
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if current_user.can_modify_ioc(ioc) %}
+                <form method="POST" action="{{ url_for('ioc.extend_expiration', id=ioc.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="number" name="additional_days" class="form-control" value="30" min="1" max="365">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Extend
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Related IOCs -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Related IOCs</h5>
+                {% if not current_user.is_viewer() %}
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRelationshipModal">
+                    <i class="bi bi-plus-circle"></i> Add Relationship
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% set outgoing = ioc.outgoing_relationships %}
+                {% set incoming = ioc.incoming_relationships %}
+
+                {% if outgoing or incoming %}
+                    <!-- Outgoing relationships (this IOC -> other IOCs) -->
+                    {% if outgoing %}
+                    <h6 class="text-muted mb-3"><i class="bi bi-arrow-right"></i> Outgoing Relationships</h6>
+                    <div class="list-group mb-4">
+                        {% for rel in outgoing %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="mb-2">
+                                        <i class="{{ rel.get_relationship_icon() }}"></i>
+                                        <strong>{{ rel.get_relationship_label() }}</strong>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('ioc.detail', id=rel.target_ioc.id) }}" class="text-decoration-none">
+                                            <span class="badge bg-{{ rel.target_ioc.severity|severity_badge }}">{{ rel.target_ioc.ioc_type.name }}</span>
+                                            {{ rel.target_ioc.value[:80] }}{% if rel.target_ioc.value|length > 80 %}...{% endif %}
+                                        </a>
+                                    </div>
+                                    {% if rel.notes %}
+                                    <small class="text-muted">{{ rel.notes }}</small>
+                                    {% endif %}
+                                </div>
+                                {% if not current_user.is_viewer() and (current_user.is_admin() or rel.created_by == current_user.id) %}
+                                <form method="POST" action="{{ url_for('relationship.delete', id=rel.id) }}" class="ms-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this relationship?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Incoming relationships (other IOCs -> this IOC) -->
+                    {% if incoming %}
+                    <h6 class="text-muted mb-3"><i class="bi bi-arrow-left"></i> Incoming Relationships</h6>
+                    <div class="list-group">
+                        {% for rel in incoming %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="mb-2">
+                                        <i class="{{ rel.get_relationship_icon() }}"></i>
+                                        <strong>{{ rel.get_reverse_label()|title }}</strong>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('ioc.detail', id=rel.source_ioc.id) }}" class="text-decoration-none">
+                                            <span class="badge bg-{{ rel.source_ioc.severity|severity_badge }}">{{ rel.source_ioc.ioc_type.name }}</span>
+                                            {{ rel.source_ioc.value[:80] }}{% if rel.source_ioc.value|length > 80 %}...{% endif %}
+                                        </a>
+                                    </div>
+                                    {% if rel.notes %}
+                                    <small class="text-muted">{{ rel.notes }}</small>
+                                    {% endif %}
+                                </div>
+                                {% if not current_user.is_viewer() and (current_user.is_admin() or rel.created_by == current_user.id) %}
+                                <form method="POST" action="{{ url_for('relationship.delete', id=rel.id) }}" class="ms-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this relationship?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted mb-0">No relationships defined. Click "Add Relationship" to link this IOC with related indicators.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="card shadow mb-4" id="comments">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> Comments & Discussion</h5>
+            </div>
+            <div class="card-body">
+                <!-- Post New Comment Form -->
+                <form method="POST" action="{{ url_for('comment.create') }}" class="mb-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ioc_id" value="{{ ioc.id }}">
+                    <div class="mb-3">
+                        <label for="commentContent" class="form-label">Add a comment</label>
+
+                        <!-- Tabs -->
+                        <div class="markdown-tabs">
+                            <div class="markdown-tab active" data-tab="write" onclick="switchTab('main', 'write')">
+                                <i class="bi bi-pencil"></i> Write
+                            </div>
+                            <div class="markdown-tab" data-tab="preview" onclick="switchTab('main', 'preview')">
+                                <i class="bi bi-eye"></i> Preview
+                            </div>
+                        </div>
+
+                        <!-- Write Tab -->
+                        <div class="tab-content-area active" id="main-write">
+                            <textarea class="form-control" id="commentContent" name="content" rows="5" placeholder="Write your comment here... Supports **Markdown** formatting. Use @username to mention someone"></textarea>
+                        </div>
+
+                        <!-- Preview Tab -->
+                        <div class="tab-content-area" id="main-preview">
+                            <div class="markdown-preview markdown-body" id="mainCommentPreview">
+                                <p class="text-muted">Nothing to preview</p>
+                            </div>
+                        </div>
+
+                        <div class="form-text">
+                            <i class="bi bi-info-circle"></i> Supports Markdown: **bold**, *italic*, `code`, [links](url), lists, and more. Use @username to mention users.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send"></i> Post Comment
+                    </button>
+                </form>
+
+                <hr>
+
+                <!-- Display Comments -->
+                {% if root_comments %}
+                    <div class="comments-list">
+                        {% for comment in root_comments %}
+                        <div class="comment mb-3 p-3 border rounded" id="comment-{{ comment.id }}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>{{ comment.author.username }}</strong>
+                                    <span class="badge bg-secondary ms-2">{{ comment.author.role }}</span>
+                                    <small class="text-muted ms-2">
+                                        {{ comment.created_at|datetime_format('%Y-%m-%d %H:%M') }}
+                                        {% if comment.is_edited() %}
+                                        <span class="badge bg-warning text-dark">edited</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div>
+                                    {% if comment.can_edit(current_user) %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleEditForm({{ comment.id }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if comment.can_delete(current_user) %}
+                                    <form method="POST" action="{{ url_for('comment.delete', id=comment.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this comment and all its replies?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Comment Content -->
+                            <div class="comment-content markdown-body" id="content-{{ comment.id }}">
+                                {{ comment.content|markdown }}
+                            </div>
+
+                            <!-- Edit Form (hidden by default) -->
+                            <div class="edit-form" id="edit-form-{{ comment.id }}" style="display: none;">
+                                <form method="POST" action="{{ url_for('comment.edit', id=comment.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <textarea class="form-control mb-2" name="content" rows="3">{{ comment.content }}</textarea>
+                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleEditForm({{ comment.id }})">Cancel</button>
+                                </form>
+                            </div>
+
+                            <!-- Reply Button -->
+                            <button type="button" class="btn btn-sm btn-link" onclick="toggleReplyForm({{ comment.id }})">
+                                <i class="bi bi-reply"></i> Reply
+                            </button>
+
+                            <!-- Reply Form (hidden by default) -->
+                            <div class="reply-form mt-2" id="reply-form-{{ comment.id }}" style="display: none;">
+                                <form method="POST" action="{{ url_for('comment.create') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="ioc_id" value="{{ ioc.id }}">
+                                    <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                                    <textarea class="form-control mb-2" name="content" rows="2" placeholder="Write your reply... Use @username to mention someone"></textarea>
+                                    <button type="submit" class="btn btn-sm btn-primary">Post Reply</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleReplyForm({{ comment.id }})">Cancel</button>
+                                </form>
+                            </div>
+
+                            <!-- Display Replies (Threaded) -->
+                            {% set replies = comment.get_replies() %}
+                            {% if replies %}
+                            <div class="replies mt-3 ms-4">
+                                {% for reply in replies %}
+                                <div class="reply mb-3 p-3 border-start border-3 border-primary bg-light rounded" id="comment-{{ reply.id }}">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong>{{ reply.author.username }}</strong>
+                                            <span class="badge bg-secondary ms-2">{{ reply.author.role }}</span>
+                                            <small class="text-muted ms-2">
+                                                {{ reply.created_at|datetime_format('%Y-%m-%d %H:%M') }}
+                                                {% if reply.is_edited() %}
+                                                <span class="badge bg-warning text-dark">edited</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <div>
+                                            {% if reply.can_edit(current_user) %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleEditForm({{ reply.id }})">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            {% endif %}
+                                            {% if reply.can_delete(current_user) %}
+                                            <form method="POST" action="{{ url_for('comment.delete', id=reply.id) }}" style="display: inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this reply?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Reply Content -->
+                                    <div class="comment-content markdown-body" id="content-{{ reply.id }}">
+                                        {{ reply.content|markdown }}
+                                    </div>
+
+                                    <!-- Edit Form for Reply (hidden by default) -->
+                                    <div class="edit-form" id="edit-form-{{ reply.id }}" style="display: none;">
+                                        <form method="POST" action="{{ url_for('comment.edit', id=reply.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <textarea class="form-control mb-2" name="content" rows="2">{{ reply.content }}</textarea>
+                                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleEditForm({{ reply.id }})">Cancel</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">No comments yet. Be the first to comment!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        {% if not current_user.is_viewer() %}
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                {% if ioc.ioc_type.name in ['IPv4', 'IPv6', 'SHA256', 'MD5', 'SHA1', 'URL'] %}
+                <form method="POST" action="{{ url_for('ioc.enrich', id=ioc.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-primary w-100 mb-2">
+                        <i class="bi bi-{% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}globe{% elif ioc.ioc_type.name == 'URL' %}search{% else %}shield-check{% endif %}"></i> Enrich IOC
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if current_user.can_modify_ioc(ioc) %}
+                <a href="{{ url_for('ioc.edit', id=ioc.id) }}" class="btn btn-outline-secondary w-100 mb-2">
+                    <i class="bi bi-pencil"></i> Edit IOC
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Relationship Modal -->
+<div class="modal fade" id="addRelationshipModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('relationship.create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="source_ioc_id" value="{{ ioc.id }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Relationship</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Relationship Type <span class="text-danger">*</span></label>
+                        <select class="form-select" name="relationship_type" required>
+                            <option value="">Select relationship type...</option>
+                            <option value="resolves_to">Resolves To (Domain/URL → IP)</option>
+                            <option value="contains">Contains (URL → Domain)</option>
+                            <option value="downloads_from">Downloads From (Hash → URL)</option>
+                            <option value="communicates_with">Communicates With (Bidirectional)</option>
+                            <option value="drops">Drops (Hash → Hash)</option>
+                            <option value="connects_to">Connects To (Hash → IP/Domain)</option>
+                            <option value="distributes">Distributes (URL/Domain → Hash)</option>
+                            <option value="hosts">Hosts (IP → Domain/URL)</option>
+                            <option value="part_of_campaign">Part of Campaign</option>
+                            <option value="related_to">Related To (Generic)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Target IOC <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="ioc-search" placeholder="Search for IOC..." autocomplete="off">
+                        <input type="hidden" name="target_ioc_id" id="target-ioc-id" required>
+                        <div id="search-results" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                        <div id="selected-ioc" class="alert alert-info mt-2" style="display: none;"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Additional context or notes about this relationship"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Relationship</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- YARA Rule Modal -->
+<div class="modal fade" id="yaraModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-code-square"></i> YARA Rule</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="yara-loading" class="text-center py-4">
+                    <div class="spinner-border text-info" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Generating YARA rule...</p>
+                </div>
+                <div id="yara-content" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <span id="yara-info-text">This YARA rule can be used for threat detection and hunting. Copy it to your YARA scanner or SIEM.</span>
+                    </div>
+                    <pre id="yara-rule" class="bg-light p-3 rounded" style="max-height: 500px; overflow-y: auto;"><code></code></pre>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="copyYaraRule(event)">
+                        <i class="bi bi-clipboard"></i> Copy to Clipboard
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="downloadYaraRule()">
+                        <i class="bi bi-download"></i> Download Rule
+                    </button>
+                    <button type="button" id="yarax-toggle-btn" class="btn btn-sm btn-outline-warning" onclick="toggleYaraX()">
+                        <i class="bi bi-arrow-repeat"></i> Convert to YARA-X
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// IOC search for relationship modal
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('ioc-search');
+    const searchResults = document.getElementById('search-results');
+    const selectedIocDiv = document.getElementById('selected-ioc');
+    const targetIocIdInput = document.getElementById('target-ioc-id');
+    let searchTimeout;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                fetch(`/relationships/search-iocs?q=${encodeURIComponent(query)}&exclude_id={{ ioc.id }}`)
+                    .then(response => response.json())
+                    .then(iocs => {
+                        if (iocs.length === 0) {
+                            searchResults.innerHTML = '<div class="list-group-item text-muted">No IOCs found</div>';
+                        } else {
+                            searchResults.innerHTML = iocs.map(ioc => `
+                                <a href="#" class="list-group-item list-group-item-action ioc-result" data-ioc-id="${ioc.id}" data-ioc-value="${ioc.value}" data-ioc-type="${ioc.type}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="badge bg-secondary">${ioc.type}</span>
+                                            <span class="ms-2">${ioc.value.substring(0, 60)}${ioc.value.length > 60 ? '...' : ''}</span>
+                                        </div>
+                                        ${ioc.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
+                                    </div>
+                                </a>
+                            `).join('');
+
+                            // Add click handlers
+                            document.querySelectorAll('.ioc-result').forEach(item => {
+                                item.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    const iocId = this.dataset.iocId;
+                                    const iocValue = this.dataset.iocValue;
+                                    const iocType = this.dataset.iocType;
+
+                                    // Set hidden input
+                                    targetIocIdInput.value = iocId;
+
+                                    // Show selected IOC
+                                    selectedIocDiv.innerHTML = `
+                                        <strong>Selected:</strong> <span class="badge bg-secondary">${iocType}</span> ${iocValue}
+                                        <button type="button" class="btn-close float-end" onclick="clearSelection()"></button>
+                                    `;
+                                    selectedIocDiv.style.display = 'block';
+
+                                    // Hide search results and clear input
+                                    searchResults.style.display = 'none';
+                                    searchInput.value = '';
+                                });
+                            });
+                        }
+                        searchResults.style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('Search error:', error);
+                        searchResults.innerHTML = '<div class="list-group-item text-danger">Error searching IOCs</div>';
+                        searchResults.style.display = 'block';
+                    });
+            }, 300);
+        });
+
+        // Close search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+    }
+});
+
+function clearSelection() {
+    document.getElementById('target-ioc-id').value = '';
+    document.getElementById('selected-ioc').style.display = 'none';
+    document.getElementById('ioc-search').value = '';
+}
+
+// YARA Generation Functions
+let currentYaraRule = '';
+let originalYaraRule = '';
+let isYaraXMode = false;
+
+function generateYara(iocId) {
+    // Reset state
+    isYaraXMode = false;
+
+    // Show loading state
+    document.getElementById('yara-loading').style.display = 'block';
+    document.getElementById('yara-content').style.display = 'none';
+
+    // Fetch YARA rule
+    fetch(`/iocs/${iocId}/generate-yara`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                originalYaraRule = data.yara_rule;
+                currentYaraRule = data.yara_rule;
+                document.getElementById('yara-rule').querySelector('code').textContent = data.yara_rule;
+
+                // Reset button state
+                const toggleBtn = document.getElementById('yarax-toggle-btn');
+                toggleBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Convert to YARA-X';
+                toggleBtn.classList.remove('btn-warning');
+                toggleBtn.classList.add('btn-outline-warning');
+
+                // Reset info text
+                document.getElementById('yara-info-text').textContent = 'This YARA rule can be used for threat detection and hunting. Copy it to your YARA scanner or SIEM.';
+
+                // Hide loading, show content
+                document.getElementById('yara-loading').style.display = 'none';
+                document.getElementById('yara-content').style.display = 'block';
+            } else {
+                alert('Error generating YARA rule');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error generating YARA rule');
+            document.getElementById('yara-loading').style.display = 'none';
+        });
+}
+
+function convertToYaraX(yaraRule) {
+    // YARA-X conversion
+    // Key difference: In YARA-X, hashes are properties, not function calls
+
+    let yaraxRule = yaraRule;
+
+    // Convert hash function calls to property access
+    // YARA:   hash.sha256(0, filesize) == "..."
+    // YARA-X: hash.sha256 == "..."
+    yaraxRule = yaraxRule.replace(/hash\.md5\(0,\s*filesize\)/g, 'hash.md5');
+    yaraxRule = yaraxRule.replace(/hash\.sha1\(0,\s*filesize\)/g, 'hash.sha1');
+    yaraxRule = yaraxRule.replace(/hash\.sha256\(0,\s*filesize\)/g, 'hash.sha256');
+
+    // Format multi-line conditions for better readability
+    // Convert: filesize == X and hash.sha256 == "..."
+    // To:      filesize == X and
+    //          hash.sha256 == "..."
+    yaraxRule = yaraxRule.replace(
+        /(filesize == \d+) and (hash\.\w+ == "[^"]+")/,
+        '$1 and\n        $2'
+    );
+
+    // Add YARA-X header comment
+    if (!yaraxRule.includes('YARA-X')) {
+        yaraxRule = '// YARA-X compatible rule\n' + yaraxRule;
+    }
+
+    return yaraxRule;
+}
+
+function toggleYaraX() {
+    const toggleBtn = document.getElementById('yarax-toggle-btn');
+    const infoText = document.getElementById('yara-info-text');
+
+    if (!isYaraXMode) {
+        // Convert to YARA-X
+        currentYaraRule = convertToYaraX(originalYaraRule);
+        document.getElementById('yara-rule').querySelector('code').textContent = currentYaraRule;
+
+        // Update button
+        toggleBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Convert to YARA';
+        toggleBtn.classList.remove('btn-outline-warning');
+        toggleBtn.classList.add('btn-warning');
+
+        // Update info text
+        infoText.textContent = 'This is a YARA-X compatible rule. YARA-X is the next-generation YARA engine written in Rust.';
+
+        isYaraXMode = true;
+    } else {
+        // Convert back to YARA
+        currentYaraRule = originalYaraRule;
+        document.getElementById('yara-rule').querySelector('code').textContent = currentYaraRule;
+
+        // Update button
+        toggleBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Convert to YARA-X';
+        toggleBtn.classList.remove('btn-warning');
+        toggleBtn.classList.add('btn-outline-warning');
+
+        // Update info text
+        infoText.textContent = 'This YARA rule can be used for threat detection and hunting. Copy it to your YARA scanner or SIEM.';
+
+        isYaraXMode = false;
+    }
+}
+
+function copyYaraRule(event) {
+    navigator.clipboard.writeText(currentYaraRule).then(() => {
+        // Show success feedback
+        const btn = event.target.closest('button');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-success');
+
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+    });
+}
+
+function downloadYaraRule() {
+    const blob = new Blob([currentYaraRule], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Use .yar extension for YARA, .yara for YARA-X
+    const extension = isYaraXMode ? 'yarax' : 'yar';
+    a.download = `ioc_{{ ioc.id }}_rule.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Comment functions
+function toggleEditForm(commentId) {
+    const contentDiv = document.getElementById(`content-${commentId}`);
+    const editForm = document.getElementById(`edit-form-${commentId}`);
+
+    if (editForm.style.display === 'none') {
+        contentDiv.style.display = 'none';
+        editForm.style.display = 'block';
+    } else {
+        contentDiv.style.display = 'block';
+        editForm.style.display = 'none';
+    }
+}
+
+function toggleReplyForm(commentId) {
+    const replyForm = document.getElementById(`reply-form-${commentId}`);
+
+    if (replyForm.style.display === 'none') {
+        replyForm.style.display = 'block';
+    } else {
+        replyForm.style.display = 'none';
+    }
+}
+
+// Markdown tab switching
+function switchTab(formId, tabName) {
+    // Remove active class from all tabs
+    const tabs = document.querySelectorAll(`[data-tab]`);
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    // Hide all tab content
+    const writeTab = document.getElementById(`${formId}-write`);
+    const previewTab = document.getElementById(`${formId}-preview`);
+
+    if (tabName === 'write') {
+        writeTab.classList.add('active');
+        previewTab.classList.remove('active');
+        document.querySelector(`[data-tab="write"]`).classList.add('active');
+    } else if (tabName === 'preview') {
+        writeTab.classList.remove('active');
+        previewTab.classList.add('active');
+        document.querySelector(`[data-tab="preview"]`).classList.add('active');
+
+        // Render markdown preview
+        const textarea = document.getElementById('commentContent');
+        const previewDiv = document.getElementById('mainCommentPreview');
+        renderMarkdownPreview(textarea.value, previewDiv);
+    }
+}
+
+// Render markdown preview
+function renderMarkdownPreview(markdown, targetElement) {
+    if (!markdown || markdown.trim() === '') {
+        targetElement.innerHTML = '<p class="text-muted">Nothing to preview</p>';
+        return;
+    }
+
+    // Simple client-side markdown rendering (basic support)
+    let html = markdown;
+
+    // Headers
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
+
+    // Links
+    html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank">$1</a>');
+
+    // Line breaks
+    html = html.replace(/\n/gim, '<br>');
+
+    // Lists (simple)
+    html = html.replace(/^\* (.+)$/gim, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+    targetElement.innerHTML = html;
+}
+
+// @mentions autocomplete
+document.addEventListener('DOMContentLoaded', function() {
+    const textareas = document.querySelectorAll('textarea[name="content"]');
+
+    textareas.forEach(textarea => {
+        let mentionDropdown = null;
+        let searchTimeout;
+        let currentMentionStart = -1;
+
+        textarea.addEventListener('input', function(e) {
+            const cursorPos = this.selectionStart;
+            const textBeforeCursor = this.value.substring(0, cursorPos);
+            const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
+
+            // Check if we're typing after an @ symbol
+            if (lastAtSymbol !== -1) {
+                const textAfterAt = textBeforeCursor.substring(lastAtSymbol + 1);
+
+                // Check if there's no space after @ (actively typing a mention)
+                if (!textAfterAt.includes(' ') && textAfterAt.length > 0) {
+                    currentMentionStart = lastAtSymbol;
+                    clearTimeout(searchTimeout);
+
+                    searchTimeout = setTimeout(() => {
+                        searchUsers(textAfterAt, textarea, cursorPos);
+                    }, 300);
+                } else {
+                    hideMentionDropdown();
+                }
+            } else {
+                hideMentionDropdown();
+            }
+        });
+
+        function searchUsers(query, textarea, cursorPos) {
+            if (query.length < 2) {
+                hideMentionDropdown();
+                return;
+            }
+
+            fetch(`/comments/search-users?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(users => {
+                    if (users.length === 0) {
+                        hideMentionDropdown();
+                        return;
+                    }
+
+                    showMentionDropdown(users, textarea, cursorPos);
+                })
+                .catch(err => {
+                    console.error('Error searching users:', err);
+                    hideMentionDropdown();
+                });
+        }
+
+        function showMentionDropdown(users, textarea, cursorPos) {
+            hideMentionDropdown();
+
+            mentionDropdown = document.createElement('div');
+            mentionDropdown.className = 'mention-dropdown list-group position-absolute';
+            mentionDropdown.style.cssText = 'z-index: 1000; max-height: 200px; overflow-y: auto; width: 250px;';
+
+            users.forEach(user => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>@${user.username}</strong>
+                            ${user.email ? `<br><small class="text-muted">${user.email}</small>` : ''}
+                        </div>
+                        <span class="badge bg-secondary">${user.role}</span>
+                    </div>
+                `;
+
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    insertMention(user.username, textarea);
+                    hideMentionDropdown();
+                });
+
+                mentionDropdown.appendChild(item);
+            });
+
+            // Position dropdown below textarea
+            const rect = textarea.getBoundingClientRect();
+            mentionDropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+            mentionDropdown.style.left = rect.left + 'px';
+
+            document.body.appendChild(mentionDropdown);
+        }
+
+        function insertMention(username, textarea) {
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, currentMentionStart);
+            const textAfter = textarea.value.substring(cursorPos);
+
+            textarea.value = textBefore + '@' + username + ' ' + textAfter;
+
+            // Move cursor after the inserted mention
+            const newCursorPos = textBefore.length + username.length + 2;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+
+            currentMentionStart = -1;
+        }
+
+        function hideMentionDropdown() {
+            if (mentionDropdown) {
+                mentionDropdown.remove();
+                mentionDropdown = null;
+            }
+        }
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (mentionDropdown && !mentionDropdown.contains(e.target) && e.target !== textarea) {
+                hideMentionDropdown();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - IOC Manager{% endblock %}
+
+{% block extra_css %}
+<!-- Pickr Color Picker CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css"/>
+<style>
+.pickr {
+    display: inline-block;
+}
+.pickr .pcr-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+}
+.color-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 2px solid #dee2e6;
+    cursor: pointer;
+    display: inline-block;
+}
+.color-picker-create,
+[class*="color-picker-edit-"] {
+    min-height: 40px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h1><i class="bi bi-gear"></i> Administration</h1>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'tags' %}active{% endif %}"
+           href="{{ url_for('admin.tags') }}"
+           role="tab">
+            <i class="bi bi-tags"></i> Tags Management
+        </a>
+    </li>
+    <!-- Future tabs can be added here -->
+    <!-- <li class="nav-item" role="presentation">
+        <a class="nav-link" href="#" role="tab">
+            <i class="bi bi-people"></i> Users
+        </a>
+    </li> -->
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content">
+    <!-- Tags Management Tab -->
+    {% if active_tab == 'tags' %}
+    <div class="tab-pane fade show active" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-tags"></i> Tags</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createTagModal">
+                    <i class="bi bi-plus-circle"></i> Add Tag
+                </button>
+            </div>
+            <div class="card-body">
+                {% if tags %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">Color</th>
+                                <th style="width: 20%;">Name</th>
+                                <th style="width: 50%;">Description</th>
+                                <th style="width: 10%;">IOCs</th>
+                                <th style="width: 15%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tag, tag_info in tags %}
+                            <tr>
+                                <td>
+                                    <span class="badge" style="background-color: {{ tag.color }}; width: 30px; height: 20px; display: inline-block;">&nbsp;</span>
+                                </td>
+                                <td><strong>{{ tag.name }}</strong></td>
+                                <td>{{ tag.description or '-' }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ tag_info.ioc_count }}</span>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editTagModal{{ tag.id }}"
+                                            title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteTagModal{{ tag.id }}"
+                                            title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Tag Modal -->
+                            <div class="modal fade" id="editTagModal{{ tag.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.edit_tag', id=tag.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Edit Tag: {{ tag.name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Name</label>
+                                                    <input type="text" class="form-control" name="name"
+                                                           value="{{ tag.name }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Description</label>
+                                                    <textarea class="form-control" name="description"
+                                                              rows="3">{{ tag.description or '' }}</textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Color</label>
+                                                    <div>
+                                                        <div class="color-picker-edit-{{ tag.id }}"></div>
+                                                        <input type="hidden" name="color" id="color-edit-{{ tag.id }}" value="{{ tag.color }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Delete Tag Modal -->
+                            <div class="modal fade" id="deleteTagModal{{ tag.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.delete_tag', id=tag.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">Delete Tag</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to delete the tag <strong>{{ tag.name }}</strong>?</p>
+                                                {% if tag_info.ioc_count > 0 %}
+                                                <div class="alert alert-warning">
+                                                    <i class="bi bi-exclamation-triangle"></i>
+                                                    This tag is currently used by <strong>{{ tag_info.ioc_count }}</strong> IOC(s).
+                                                    The tag will be automatically removed from all these IOCs.
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-danger">
+                                                    Delete Tag
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No tags found. Create your first tag using the "Add Tag" button above.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create Tag Modal -->
+<div class="modal fade" id="createTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.create_tag') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Tag</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required
+                               placeholder="e.g., malware, phishing, apt">
+                        <small class="form-text text-muted">Tag names are automatically converted to lowercase.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"
+                                  placeholder="Optional description of this tag"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Color</label>
+                        <div>
+                            <div class="color-picker-create"></div>
+                            <input type="hidden" name="color" id="color-create" value="#6c757d">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Tag</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Pickr Color Picker JS -->
+<script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let createPickr = null;
+    const editPickrs = {};
+
+    // Initialize Pickr when create modal is shown
+    const createModal = document.getElementById('createTagModal');
+    if (createModal) {
+        createModal.addEventListener('shown.bs.modal', function() {
+            if (!createPickr) {
+                createPickr = Pickr.create({
+                    el: '.color-picker-create',
+                    theme: 'classic',
+                    default: '#6c757d',
+                    swatches: [
+                        '#6c757d', '#007bff', '#28a745', '#dc3545',
+                        '#ffc107', '#17a2b8', '#f8f9fa', '#343a40'
+                    ],
+                    components: {
+                        preview: true,
+                        opacity: false,
+                        hue: true,
+                        interaction: {
+                            hex: true,
+                            rgba: false,
+                            hsla: false,
+                            hsva: false,
+                            cmyk: false,
+                            input: true,
+                            clear: false,
+                            save: true
+                        }
+                    }
+                });
+
+                createPickr.on('save', (color, instance) => {
+                    if (color) {
+                        document.getElementById('color-create').value = color.toHEXA().toString();
+                    }
+                    instance.hide();
+                });
+            }
+        });
+    }
+
+    // Initialize Pickr for edit modals when they are shown
+    {% for tag, tag_info in tags %}
+    const editModal{{ tag.id }} = document.getElementById('editTagModal{{ tag.id }}');
+    if (editModal{{ tag.id }}) {
+        editModal{{ tag.id }}.addEventListener('shown.bs.modal', function() {
+            if (!editPickrs[{{ tag.id }}]) {
+                editPickrs[{{ tag.id }}] = Pickr.create({
+                    el: '.color-picker-edit-{{ tag.id }}',
+                    theme: 'classic',
+                    default: '{{ tag.color }}',
+                    swatches: [
+                        '#6c757d', '#007bff', '#28a745', '#dc3545',
+                        '#ffc107', '#17a2b8', '#f8f9fa', '#343a40'
+                    ],
+                    components: {
+                        preview: true,
+                        opacity: false,
+                        hue: true,
+                        interaction: {
+                            hex: true,
+                            rgba: false,
+                            hsla: false,
+                            hsva: false,
+                            cmyk: false,
+                            input: true,
+                            clear: false,
+                            save: true
+                        }
+                    }
+                });
+
+                editPickrs[{{ tag.id }}].on('save', (color, instance) => {
+                    if (color) {
+                        document.getElementById('color-edit-{{ tag.id }}').value = color.toHEXA().toString();
+                    }
+                    instance.hide();
+                });
+            }
+        });
+    }
+    {% endfor %}
+});
+</script>
+{% endblock %}

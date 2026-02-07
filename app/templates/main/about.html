@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}About - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h1 class="mb-4"><i class="bi bi-info-circle"></i> About IOC Manager</h1>
+
+                <h3>Overview</h3>
+                <p>
+                    IOC Manager is a comprehensive platform for managing Indicators of Compromise (IOCs).
+                    It provides security teams with tools to collect, analyze, and share threat intelligence.
+                </p>
+
+                <h3>Features</h3>
+                <ul>
+                    <li><strong>IOC Management:</strong> Create, edit, and organize IOCs with detailed metadata</li>
+                    <li><strong>Multiple IOC Types:</strong> Support for IPs, domains, URLs, file hashes, and more</li>
+                    <li><strong>Severity Levels:</strong> Classify IOCs by severity (Low, Medium, High, Critical)</li>
+                    <li><strong>TLP Classification:</strong> Traffic Light Protocol support for information sharing</li>
+                    <li><strong>Tagging System:</strong> Organize IOCs with custom tags</li>
+                    <li><strong>Role-Based Access:</strong> Three user roles (Viewer, User, Admin)</li>
+                    <li><strong>Search & Filter:</strong> Powerful search and filtering capabilities</li>
+                    <li><strong>Enrichment:</strong> External threat intelligence integration</li>
+                </ul>
+
+                <h3>User Roles</h3>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Permissions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-secondary">Viewer</span></td>
+                                <td>Read-only access to IOCs</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">User</span></td>
+                                <td>Create and edit own IOCs</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Admin</span></td>
+                                <td>Full access including user management</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Technology Stack</h3>
+                <ul>
+                    <li><strong>Backend:</strong> Python Flask</li>
+                    <li><strong>Database:</strong> SQLAlchemy ORM</li>
+                    <li><strong>Frontend:</strong> Bootstrap 5</li>
+                    <li><strong>Authentication:</strong> Flask-Login</li>
+                </ul>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

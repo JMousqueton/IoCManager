@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}IOCs - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h1><i class="bi bi-list-ul"></i> Indicators of Compromise</h1>
+    </div>
+    <div class="col-md-6 text-end">
+        {% if not current_user.is_viewer() %}
+        <a href="{{ url_for('ioc.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add IOC
+        </a>
+        <a href="{{ url_for('ioc.bulk_import') }}" class="btn btn-secondary">
+            <i class="bi bi-upload"></i> Bulk Import
+        </a>
+        {% endif %}
+
+        <a href="{{ url_for('ioc_export.export_all_stix') }}" class="btn btn-success" title="Export all IOCs as STIX 2.1">
+            <i class="bi bi-download"></i> Export STIX
+        </a>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('ioc.list') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    {{ form.query.label(class="form-label") }}
+                    {{ form.query(class="form-control", placeholder="Search IOCs...") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.ioc_type_id.label(class="form-label") }}
+                    {{ form.ioc_type_id(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.severity.label(class="form-label") }}
+                    {{ form.severity(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.tlp.label(class="form-label") }}
+                    {{ form.tlp(class="form-select") }}
+                </div>
+                <div class="col-md-1">
+                    {{ form.is_active.label(class="form-label") }}
+                    {{ form.is_active(class="form-select") }}
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- IOCs Table -->
+<div class="card shadow">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th>
+                        <th>Value</th>
+                        <th>Severity</th>
+                        <th>TLP</th>
+                        <th>Confidence</th>
+                        <th>Status</th>
+                        <th>Expiration</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if iocs %}
+                        {% for ioc in iocs %}
+                        <tr>
+                            <td><span class="badge bg-secondary">{{ ioc.ioc_type.name }}</span></td>
+                            <td>
+                                <a href="{{ url_for('ioc.detail', id=ioc.id) }}">
+                                    {{ ioc.value[:50] }}{% if ioc.value|length > 50 %}...{% endif %}
+                                </a>
+                                {% if ioc.tags %}
+                                    <br>
+                                    {% for tag in ioc.tags[:3] %}
+                                        <span class="badge" style="background-color: {{ tag.color }}; color: white;">{{ tag.name }}</span>
+                                    {% endfor %}
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-{{ ioc.severity|severity_badge }}">{{ ioc.severity }}</span></td>
+                            <td><span class="badge bg-{{ ioc.tlp|tlp_badge }} text-dark">{{ ioc.tlp }}</span></td>
+                            <td>{{ ioc.confidence }}%</td>
+                            <td>
+                                {% if ioc.false_positive %}
+                                    <span class="badge bg-warning text-dark">False Positive</span>
+                                {% elif ioc.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ioc.expires_at %}
+                                    {% if ioc.is_expired() %}
+                                        <span class="badge bg-danger">Expired</span>
+                                    {% else %}
+                                        {% set days_remaining = ((ioc.expires_at - now()).days) %}
+                                        <span class="badge bg-{% if days_remaining < 7 %}danger{% elif days_remaining < 30 %}warning{% else %}success{% endif %}">
+                                            {{ days_remaining }}d
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Never</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ ioc.created_at|datetime_format('%Y-%m-%d') }}</td>
+                            <td>
+                                <a href="{{ url_for('ioc.detail', id=ioc.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if current_user.can_modify_ioc(ioc) %}
+                                <a href="{{ url_for('ioc.edit', id=ioc.id) }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                No IOCs found. {% if not current_user.is_viewer() %}<a href="{{ url_for('ioc.create') }}">Create your first IOC</a>{% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('ioc.list', page=pagination.prev_num, **request.args) }}">Previous</a>
+                </li>
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('ioc.list', page=page_num, **request.args) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('ioc.list', page=pagination.next_num, **request.args) }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

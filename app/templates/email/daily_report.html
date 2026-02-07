@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #212529;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .metric-card {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        .metric-card h3 {
+            margin-top: 0;
+            color: #0d6efd;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #212529;
+        }
+        .severity-high { color: #dc3545; }
+        .severity-critical { color: #6c0010; }
+        .ioc-list {
+            list-style: none;
+            padding: 0;
+        }
+        .ioc-item {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .badge-critical { background-color: #dc3545; color: white; }
+        .badge-high { background-color: #fd7e14; color: white; }
+        .badge-medium { background-color: #ffc107; color: black; }
+        .badge-low { background-color: #17a2b8; color: white; }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ IOC Manager - Daily Report</h1>
+        <p style="margin: 5px 0 0 0;">{{ report_date }}</p>
+    </div>
+
+    <h2>📊 Daily Summary</h2>
+
+    <div class="metric-card">
+        <h3>New IOCs</h3>
+        <div class="metric-value">{{ stats.new_iocs_today }}</div>
+        <p>IOCs added in the last 24 hours</p>
+    </div>
+
+    <div class="metric-card">
+        <h3>Active IOCs</h3>
+        <div class="metric-value">{{ stats.total_active }}</div>
+        <p>Currently active indicators</p>
+    </div>
+
+    <div class="metric-card">
+        <h3>Enrichment Success Rate</h3>
+        <div class="metric-value">{{ stats.enrichment_rate }}%</div>
+        <p>IOCs successfully enriched with threat intelligence</p>
+    </div>
+
+    {% if new_iocs %}
+    <h2>🆕 New IOCs Added Today</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Severity</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ioc in new_iocs %}
+            <tr>
+                <td>{{ ioc.ioc_type.name }}</td>
+                <td style="font-family: monospace; font-size: 12px;">
+                    {{ ioc.value[:60] }}{% if ioc.value|length > 60 %}...{% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-{{ ioc.severity.lower() }}">{{ ioc.severity }}</span>
+                </td>
+                <td>{{ ioc.source or 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if high_severity_iocs %}
+    <h2>⚠️ High Severity IOCs (Last 24h)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Severity</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ioc in high_severity_iocs %}
+            <tr>
+                <td>{{ ioc.ioc_type.name }}</td>
+                <td style="font-family: monospace; font-size: 12px;">
+                    {{ ioc.value[:60] }}{% if ioc.value|length > 60 %}...{% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-{{ ioc.severity.lower() }}">{{ ioc.severity }}</span>
+                </td>
+                <td>{{ ioc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <h2>📈 IOC Distribution by Type</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Count</th>
+                <th>Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for type_stat in type_distribution %}
+            <tr>
+                <td>{{ type_stat.name }}</td>
+                <td>{{ type_stat.count }}</td>
+                <td>{{ type_stat.percentage }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>This is an automated report from IOC Manager</p>
+        <p>Generated on {{ report_date }}</p>
+        <p>To unsubscribe or modify recipients, update DAILY_REPORT_RECIPIENTS in your .env file</p>
+    </div>
+</body>
+</html>

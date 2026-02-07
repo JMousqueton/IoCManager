@@ -1,0 +1,3 @@
+# This file ensures the instance/ directory is tracked in git
+# The instance/ directory stores SQLite database files and other instance-specific data
+# All contents are ignored except this .gitkeep file

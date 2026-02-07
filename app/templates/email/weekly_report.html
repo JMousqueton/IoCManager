@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #212529;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .metric-card {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        .metric-card h3 {
+            margin-top: 0;
+            color: #0d6efd;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #212529;
+        }
+        .metric-comparison {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .trend-up { color: #dc3545; }
+        .trend-down { color: #28a745; }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .badge-critical { background-color: #dc3545; color: white; }
+        .badge-high { background-color: #fd7e14; color: white; }
+        .badge-medium { background-color: #ffc107; color: black; }
+        .badge-low { background-color: #17a2b8; color: white; }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ IOC Manager - Weekly Report</h1>
+        <p style="margin: 5px 0 0 0;">{{ week_start }} - {{ week_end }}</p>
+    </div>
+
+    <div class="section">
+        <h2>📊 Weekly Summary</h2>
+
+        <div class="metric-card">
+            <h3>New IOCs This Week</h3>
+            <div class="metric-value">{{ stats.new_iocs_week }}</div>
+            {% if stats.new_iocs_change %}
+            <p class="metric-comparison {% if stats.new_iocs_change > 0 %}trend-up{% else %}trend-down{% endif %}">
+                {% if stats.new_iocs_change > 0 %}▲{% else %}▼{% endif %} {{ stats.new_iocs_change|abs }}% vs last week
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="metric-card">
+            <h3>Total Active IOCs</h3>
+            <div class="metric-value">{{ stats.total_active }}</div>
+            <p>{{ stats.critical_count }} Critical | {{ stats.high_count }} High</p>
+        </div>
+
+        <div class="metric-card">
+            <h3>IOCs Enriched</h3>
+            <div class="metric-value">{{ stats.enriched_count }}</div>
+            <p>{{ stats.enrichment_rate }}% enrichment success rate</p>
+        </div>
+
+        <div class="metric-card">
+            <h3>User Activity</h3>
+            <div class="metric-value">{{ stats.active_users }}</div>
+            <p>Active users this week | {{ stats.total_actions }} actions performed</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📈 Trending Analysis</h2>
+
+        <h3>IOCs by Severity</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>This Week</th>
+                    <th>Last Week</th>
+                    <th>Change</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for severity in severity_trends %}
+                <tr>
+                    <td><span class="badge badge-{{ severity.name.lower() }}">{{ severity.name }}</span></td>
+                    <td>{{ severity.this_week }}</td>
+                    <td>{{ severity.last_week }}</td>
+                    <td class="{% if severity.change > 0 %}trend-up{% else %}trend-down{% endif %}">
+                        {% if severity.change > 0 %}▲{% elif severity.change < 0 %}▼{% else %}—{% endif %} {{ severity.change|abs }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if top_ioc_types %}
+    <div class="section">
+        <h2>🎯 Top IOC Types</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Count</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ioc_type in top_ioc_types %}
+                <tr>
+                    <td>{{ ioc_type.name }}</td>
+                    <td>{{ ioc_type.count }}</td>
+                    <td>{{ ioc_type.percentage }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if top_sources %}
+    <div class="section">
+        <h2>🔍 Top IOC Sources</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>IOCs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for source in top_sources %}
+                <tr>
+                    <td>{{ source.name }}</td>
+                    <td>{{ source.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if most_active_users %}
+    <div class="section">
+        <h2>👥 Most Active Users</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>IOCs Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in most_active_users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.iocs_created }}</td>
+                    <td>{{ user.total_actions }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if expiring_soon %}
+    <div class="section">
+        <h2>⏰ IOCs Expiring Soon (Next 7 Days)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>Expires</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ioc in expiring_soon %}
+                <tr>
+                    <td>{{ ioc.ioc_type.name }}</td>
+                    <td style="font-family: monospace; font-size: 12px;">
+                        {{ ioc.value[:50] }}{% if ioc.value|length > 50 %}...{% endif %}
+                    </td>
+                    <td>{{ ioc.expires_at.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>This is an automated weekly report from IOC Manager</p>
+        <p>Generated on {{ report_date }}</p>
+        <p>To unsubscribe or modify recipients, update WEEKLY_REPORT_RECIPIENTS in your .env file</p>
+    </div>
+</body>
+</html>

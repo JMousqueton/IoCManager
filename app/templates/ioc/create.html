@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Add IOC - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h3 class="mb-0"><i class="bi bi-plus-circle"></i> Add New IOC</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('ioc.create') }}">
+                    {{ form.hidden_tag() }}
+
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            {{ form.ioc_type_id.label(class="form-label") }}
+                            {{ form.ioc_type_id(class="form-select" + (" is-invalid" if form.ioc_type_id.errors else "")) }}
+                            {% if form.ioc_type_id.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.ioc_type_id.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.confidence.label(class="form-label") }}
+                            {{ form.confidence(class="form-control" + (" is-invalid" if form.confidence.errors else "")) }}
+                            {% if form.confidence.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.confidence.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.value.label(class="form-label") }}
+                        {{ form.value(class="form-control" + (" is-invalid" if form.value.errors else ""), rows=3, placeholder="Enter IOC value...") }}
+                        {% if form.value.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.value.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.severity.label(class="form-label") }}
+                            {{ form.severity(class="form-select" + (" is-invalid" if form.severity.errors else "")) }}
+                            {% if form.severity.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.severity.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.tlp.label(class="form-label") }}
+                            {{ form.tlp(class="form-select" + (" is-invalid" if form.tlp.errors else "")) }}
+                            {% if form.tlp.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.tlp.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.source.label(class="form-label") }}
+                            {{ form.source(class="form-control" + (" is-invalid" if form.source.errors else ""), placeholder="Source...") }}
+                            {% if form.source.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.source.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows=3, placeholder="Description...") }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.tags.label(class="form-label") }}
+                        {{ form.tags(class="form-control" + (" is-invalid" if form.tags.errors else ""), placeholder="tag1, tag2, tag3...") }}
+                        {% if form.tags.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.tags.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Separate tags with commas</div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows=3, placeholder="Additional notes...") }}
+                        {% if form.notes.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.notes.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                {{ form.is_active(class="form-check-input") }}
+                                {{ form.is_active.label(class="form-check-label") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                {{ form.false_positive(class="form-check-input") }}
+                                {{ form.false_positive.label(class="form-check-label") }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.expiration_days.label(class="form-label") }}
+                        {{ form.expiration_days(class="form-control" + (" is-invalid" if form.expiration_days.errors else ""), placeholder="e.g., 90") }}
+                        <div class="form-text">{{ form.expiration_days.description }}</div>
+                        {% if form.expiration_days.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.expiration_days.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('ioc.list') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/tag-autocomplete.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,4 @@
+# This file ensures the data/ directory is tracked in git
+# The data/ directory stores MaxMind GeoIP databases and ASN data files
+# All contents are ignored except this .gitkeep file
+# Download GeoIP databases using: python scripts/download_asn_db.py

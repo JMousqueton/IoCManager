@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h1><i class="bi bi-person-circle"></i> User Profile</h1>
+    </div>
+    <div class="col-md-6 text-end">
+        {% if current_user.is_admin() %}
+        <a href="{{ url_for('user.edit', id=user.id) }}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a href="{{ url_for('user.list') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">User Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Username:</strong></div>
+                    <div class="col-md-9">{{ user.username }}</div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Email:</strong></div>
+                    <div class="col-md-9">{{ user.email }}</div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Role:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if user.role == 'Admin' %}danger{% elif user.role == 'User' %}primary{% else %}secondary{% endif %}">
+                            {{ user.role }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Status:</strong></div>
+                    <div class="col-md-9">
+                        {% if user.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Last Login:</strong></div>
+                    <div class="col-md-9">
+                        {{ user.last_login|datetime_format('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never' }}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Created At:</strong></div>
+                    <div class="col-md-9">{{ user.created_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">IOCs Created</small>
+                    <h3 class="mb-0">{{ user.iocs_created.count() }}</h3>
+                </div>
+
+                <div class="mb-0">
+                    <small class="text-muted">Audit Logs</small>
+                    <h3 class="mb-0">{{ user.audit_logs.count() }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
