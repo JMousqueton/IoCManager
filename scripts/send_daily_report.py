@@ -51,7 +51,11 @@ def send_daily_report():
             print("=" * 60)
             return
 
-        recipients = [email.strip() for email in recipients_str.split(',')]
+        # Handle both string and list formats
+        if isinstance(recipients_str, list):
+            recipients = [email.strip() for email in recipients_str if email.strip()]
+        else:
+            recipients = [email.strip() for email in recipients_str.split(',') if email.strip()]
         print(f"Recipients: {', '.join(recipients)}")
         print()
 
