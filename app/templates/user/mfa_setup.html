@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Enable MFA - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h4 class="mb-0"><i class="bi bi-shield-plus"></i> Enable Multi-Factor Authentication</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>What is MFA?</strong> Multi-Factor Authentication adds an extra layer of security by requiring a code from your authenticator app in addition to your password.
+                </div>
+
+                <h5 class="mb-3">Step 1: Scan QR Code</h5>
+                <p class="text-muted">Use an authenticator app (Google Authenticator, Authy, Microsoft Authenticator) to scan this QR code:</p>
+
+                <div class="text-center my-4">
+                    <img src="{{ qr_code }}" alt="MFA QR Code" class="img-fluid" style="max-width: 300px;">
+                </div>
+
+                <div class="alert alert-secondary">
+                    <p class="mb-1"><strong>Can't scan the QR code?</strong> Enter this secret key manually:</p>
+                    <div class="input-group">
+                        <input type="text" class="form-control font-monospace" value="{{ secret }}" readonly id="secret-key">
+                        <button class="btn btn-outline-secondary" type="button" onclick="copySecret()">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h5 class="mb-3">Step 2: Verify Setup</h5>
+                <p class="text-muted">Enter the 6-digit code from your authenticator app to verify the setup:</p>
+
+                <form method="POST" action="{{ url_for('user.mfa_setup') }}">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.verification_code.label(class="form-label") }}
+                        {{ form.verification_code(class="form-control" + (" is-invalid" if form.verification_code.errors else ""), placeholder="000000", autofocus=True) }}
+                        {% if form.verification_code.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.verification_code.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">The code refreshes every 30 seconds</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('user.profile') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow mt-4">
+            <div class="card-body">
+                <h6 class="mb-2"><i class="bi bi-question-circle"></i> Recommended Authenticator Apps</h6>
+                <ul class="mb-0">
+                    <li><strong>Google Authenticator</strong> - Available for <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" target="_blank">Android</a> and <a href="https://apps.apple.com/app/google-authenticator/id388497605" target="_blank">iOS</a></li>
+                    <li><strong>Microsoft Authenticator</strong> - Available for <a href="https://play.google.com/store/apps/details?id=com.azure.authenticator" target="_blank">Android</a> and <a href="https://apps.apple.com/app/microsoft-authenticator/id983156458" target="_blank">iOS</a></li>
+                    <li><strong>Authy</strong> - Available for <a href="https://authy.com/download/" target="_blank">multiple platforms</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copySecret() {
+    const secretInput = document.getElementById('secret-key');
+    secretInput.select();
+    secretInput.setSelectionRange(0, 99999); // For mobile devices
+    navigator.clipboard.writeText(secretInput.value);
+
+    // Show feedback
+    const btn = event.target.closest('button');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+    setTimeout(() => {
+        btn.innerHTML = originalHTML;
+    }, 2000);
+}
+</script>
+{% endblock %}

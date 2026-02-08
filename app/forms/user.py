@@ -2,7 +2,7 @@
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SelectField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, ValidationError, Regexp
 from flask_login import current_user
 from app.models.user import User
 
@@ -102,4 +102,47 @@ class ChangePasswordForm(FlaskForm):
     def validate_current_password(self, current_password):
         """Verify current password is correct"""
         if not current_user.check_password(current_password.data):
+            raise ValidationError('Current password is incorrect.')
+
+
+class MFASetupForm(FlaskForm):
+    """Form for testing MFA during setup"""
+
+    verification_code = StringField('Verification Code', validators=[
+        DataRequired(message='Verification code is required'),
+        Length(min=6, max=6, message='Code must be 6 digits'),
+        Regexp(r'^\d{6}$', message='Code must contain only digits')
+    ])
+    submit = SubmitField('Verify and Enable MFA')
+
+
+class MFAVerifyForm(FlaskForm):
+    """Form for verifying MFA code during login"""
+
+    code = StringField('Authentication Code', validators=[
+        DataRequired(message='Authentication code is required'),
+        Length(min=6, max=6, message='Code must be 6 digits')
+    ])
+    use_backup_code = BooleanField('Use a backup code instead')
+    submit = SubmitField('Verify')
+
+
+class MFADisableForm(FlaskForm):
+    """Form for disabling MFA"""
+
+    password = PasswordField('Current Password', validators=[
+        DataRequired(message='Password is required')
+    ])
+    mfa_code = StringField('Current MFA Code', validators=[
+        DataRequired(message='MFA code is required'),
+        Length(min=6, max=6, message='Code must be 6 digits')
+    ])
+    confirm = BooleanField('I understand I will lose MFA protection', validators=[
+        DataRequired(message='Please confirm you want to disable MFA')
+    ])
+    submit = SubmitField('Disable MFA')
+
+    def validate_password(self, password):
+        """Verify current password is correct"""
+        if not current_user.check_password(password.data):
             raise ValidationError('Current password is incorrect.')

@@ -87,3 +87,19 @@ class Session(db.Model):
 
     def __repr__(self):
         return f'<Session User#{self.user_id} from {self.ip_address}>'
+
+
+class MFAVerificationAttempt(db.Model):
+    """Track MFA verification attempts for rate limiting"""
+
+    __tablename__ = 'mfa_verification_attempts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    ip_address = db.Column(db.String(45), nullable=False)
+    success = db.Column(db.Boolean, default=False, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    attempt_type = db.Column(db.String(20), nullable=False)  # 'totp' or 'backup'
+
+    def __repr__(self):
+        return f'<MFAVerificationAttempt user={self.user_id} success={self.success}>'

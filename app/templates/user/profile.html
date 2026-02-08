@@ -54,6 +54,44 @@
             </div>
         </div>
 
+        <!-- MFA Section -->
+        <div class="card shadow mt-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> Multi-Factor Authentication</h5>
+            </div>
+            <div class="card-body">
+                {% if current_user.mfa_enabled %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-shield-check"></i> <strong>MFA is enabled</strong> on your account
+                    </div>
+                    <p class="text-muted mb-3">Enabled on: {{ current_user.mfa_enabled_at.strftime('%Y-%m-%d %H:%M:%S') if current_user.mfa_enabled_at else 'Unknown' }}</p>
+                    {% set remaining = current_user.get_remaining_backup_codes_count() %}
+                    <p class="mb-3">Backup codes remaining: <strong>{{ remaining }}/10</strong></p>
+                    {% if remaining < 3 %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> You have less than 3 backup codes remaining. Consider regenerating them.
+                        </div>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('user.mfa_backup_codes') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-key"></i> Manage Backup Codes
+                        </a>
+                        <a href="{{ url_for('user.mfa_disable') }}" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-x-circle"></i> Disable MFA
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-shield-exclamation"></i> <strong>MFA is not enabled</strong> on your account
+                    </div>
+                    <p class="mb-3">Multi-factor authentication adds an extra layer of security by requiring a code from your authenticator app in addition to your password.</p>
+                    <a href="{{ url_for('user.mfa_setup') }}" class="btn btn-primary">
+                        <i class="bi bi-shield-plus"></i> Enable MFA
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Statistics Card -->
         <div class="card shadow mt-4">
             <div class="card-header bg-white">

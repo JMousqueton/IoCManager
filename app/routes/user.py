@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.models.user import User
 from app.models.audit import AuditLog
-from app.forms.user import UserForm, ProfileForm, ChangePasswordForm
+from app.forms.user import UserForm, ProfileForm, ChangePasswordForm, MFASetupForm, MFADisableForm
 
 user_bp = Blueprint('user', __name__)
 
@@ -215,3 +215,154 @@ def change_password():
         return redirect(url_for('user.profile'))
 
     return render_template('user/change_password.html', form=form)
+
+
+# MFA Routes
+@user_bp.route('/mfa/setup', methods=['GET', 'POST'])
+@login_required
+def mfa_setup():
+    """MFA setup wizard"""
+    from datetime import datetime
+    from flask import session
+    import pyotp
+    from app.utils.mfa import generate_qr_code
+
+    if current_user.mfa_enabled:
+        flash('MFA is already enabled on your account.', 'info')
+        return redirect(url_for('user.profile'))
+
+    form = MFASetupForm()
+
+    # Generate or retrieve secret from session
+    if 'mfa_setup_secret' not in session:
+        session['mfa_setup_secret'] = pyotp.random_base32()
+
+    secret = session['mfa_setup_secret']
+
+    if form.validate_on_submit():
+        # Verify test code
+        totp = pyotp.TOTP(secret)
+        if totp.verify(form.verification_code.data, valid_window=1):
+            # Enable MFA
+            current_user.set_mfa_secret(secret)
+            current_user.mfa_enabled = True
+            current_user.mfa_enabled_at = datetime.utcnow()
+
+            # Generate backup codes
+            backup_codes = current_user.generate_backup_codes()
+
+            db.session.commit()
+
+            # Clean up session
+            session.pop('mfa_setup_secret', None)
+
+            # Audit log
+            log = AuditLog(
+                user_id=current_user.id,
+                action='UPDATE',
+                resource_type='User',
+                resource_id=current_user.id,
+                details='Enabled MFA'
+            )
+            db.session.add(log)
+            db.session.commit()
+
+            flash('MFA has been enabled successfully!', 'success')
+            return render_template('user/mfa_backup_codes.html',
+                                 backup_codes=backup_codes,
+                                 first_time=True)
+        else:
+            flash('Invalid verification code. Please try again.', 'danger')
+
+    # Generate QR code
+    qr_code = generate_qr_code(secret, current_user.username)
+
+    return render_template('user/mfa_setup.html',
+                         form=form,
+                         qr_code=qr_code,
+                         secret=secret)
+
+
+@user_bp.route('/mfa/disable', methods=['GET', 'POST'])
+@login_required
+def mfa_disable():
+    """Disable MFA"""
+    if not current_user.mfa_enabled:
+        flash('MFA is not enabled on your account.', 'info')
+        return redirect(url_for('user.profile'))
+
+    form = MFADisableForm()
+
+    if form.validate_on_submit():
+        # Verify MFA code
+        if current_user.verify_totp(form.mfa_code.data):
+            current_user.mfa_enabled = False
+            current_user.mfa_secret = None
+            current_user.mfa_backup_codes = None
+            current_user.mfa_backup_codes_used = None
+            db.session.commit()
+
+            # Audit log
+            log = AuditLog(
+                user_id=current_user.id,
+                action='UPDATE',
+                resource_type='User',
+                resource_id=current_user.id,
+                details='Disabled MFA'
+            )
+            db.session.add(log)
+            db.session.commit()
+
+            flash('MFA has been disabled.', 'success')
+            return redirect(url_for('user.profile'))
+        else:
+            flash('Invalid MFA code. Please try again.', 'danger')
+
+    return render_template('user/mfa_disable.html', form=form)
+
+
+@user_bp.route('/mfa/backup-codes', methods=['GET'])
+@login_required
+def mfa_backup_codes():
+    """View backup codes status"""
+    if not current_user.mfa_enabled:
+        flash('MFA is not enabled on your account.', 'info')
+        return redirect(url_for('user.profile'))
+
+    remaining = current_user.get_remaining_backup_codes_count()
+    return render_template('user/mfa_backup_codes_view.html', remaining=remaining)
+
+
+@user_bp.route('/mfa/regenerate-codes', methods=['POST'])
+@login_required
+def mfa_regenerate_codes():
+    """Regenerate backup codes"""
+    if not current_user.mfa_enabled:
+        flash('MFA is not enabled on your account.', 'danger')
+        return redirect(url_for('user.profile'))
+
+    # Require MFA verification
+    code = request.form.get('mfa_code')
+    if not code or not current_user.verify_totp(code):
+        flash('Invalid MFA code. Please try again.', 'danger')
+        return redirect(url_for('user.mfa_backup_codes'))
+
+    # Generate new codes
+    backup_codes = current_user.generate_backup_codes()
+    db.session.commit()
+
+    # Audit log
+    log = AuditLog(
+        user_id=current_user.id,
+        action='UPDATE',
+        resource_type='User',
+        resource_id=current_user.id,
+        details='Regenerated MFA backup codes'
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    flash('Backup codes have been regenerated.', 'success')
+    return render_template('user/mfa_backup_codes.html',
+                         backup_codes=backup_codes,
+                         first_time=False)

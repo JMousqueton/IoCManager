@@ -35,6 +35,10 @@ gunicorn==22.0.0
 # Security
 cryptography==44.0.1
 
+# MFA / TOTP
+pyotp==2.9.0
+qrcode[pil]==7.4.2
+
 # Utilities
 python-dateutil==2.9.0
 

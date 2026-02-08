@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}MFA Backup Codes - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h4 class="mb-0"><i class="bi bi-key"></i> MFA Backup Codes</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Backup codes are one-time use codes that can be used to log in if you lose access to your authenticator app.
+                </div>
+
+                <div class="card bg-light mb-4">
+                    <div class="card-body text-center">
+                        <h1 class="display-4 mb-2">{{ remaining }} / 10</h1>
+                        <p class="text-muted mb-0">Backup codes remaining</p>
+                    </div>
+                </div>
+
+                {% if remaining < 3 %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Warning:</strong> You have less than 3 backup codes remaining. Consider regenerating your backup codes.
+                    </div>
+                {% endif %}
+
+                <div class="alert alert-light">
+                    <p class="mb-2"><strong>About backup codes:</strong></p>
+                    <ul class="mb-0">
+                        <li>You have 10 backup codes total</li>
+                        <li>Each code can only be used once</li>
+                        <li>Used codes are marked and cannot be reused</li>
+                        <li>You can regenerate new codes at any time (this will invalidate old codes)</li>
+                    </ul>
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3">Regenerate Backup Codes</h5>
+                <p class="text-muted">If you've lost your backup codes or used most of them, you can generate new ones. This will invalidate all your old backup codes.</p>
+
+                <form method="POST" action="{{ url_for('user.mfa_regenerate_codes') }}" onsubmit="return confirmRegenerate()">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="mfa_code" class="form-label">Enter your current MFA code to continue</label>
+                        <input type="text" class="form-control" id="mfa_code" name="mfa_code" placeholder="000000" maxlength="6" pattern="\d{6}" required>
+                        <div class="form-text">Enter the 6-digit code from your authenticator app</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('user.profile') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Profile
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-clockwise"></i> Regenerate Codes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmRegenerate() {
+    return confirm('Are you sure you want to regenerate your backup codes? Your old codes will no longer work.');
+}
+</script>
+{% endblock %}

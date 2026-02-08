@@ -51,6 +51,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 
 ### Security & Access Control
 - **Role-Based Access Control (RBAC)**: Admin, User, and Viewer roles
+- **Multi-Factor Authentication (MFA)**: Optional per-user TOTP-based 2FA with QR code setup, backup codes, and rate limiting
 - **User Management**: User registration, authentication, and session management
 - **Registration Control**: Enable/disable public registration
 - **Comprehensive Audit Trail**: Track all user actions, IOC changes, and system events
@@ -209,6 +210,37 @@ Enable collaborative review for quality assurance:
 5. After review is complete, toggle the switch again to remove review status
 6. All review status changes are logged in the audit trail
 
+### Multi-Factor Authentication (MFA)
+
+Enhance account security with optional TOTP-based two-factor authentication:
+
+**Enabling MFA**:
+1. Navigate to your profile page
+2. Click **"Enable MFA"** in the Multi-Factor Authentication section
+3. Scan the QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator)
+4. Enter the 6-digit verification code to confirm setup
+5. Save your 10 backup codes in a secure location (each can only be used once)
+
+**Logging in with MFA**:
+1. Enter your username and password as usual
+2. You'll be redirected to an MFA verification page
+3. Enter the 6-digit code from your authenticator app
+4. Alternatively, check "Use a backup code instead" and enter one of your backup codes
+
+**Managing MFA**:
+- **View Backup Codes**: See how many backup codes you have remaining
+- **Regenerate Codes**: Generate new backup codes if you've used most of them (requires MFA verification)
+- **Disable MFA**: Turn off MFA protection (requires password + current MFA code)
+
+**Security Features**:
+- Rate limiting: Maximum 10 failed verification attempts per 15 minutes
+- Session timeout: MFA verification must be completed within 5 minutes
+- Backup codes: 10 one-time use codes for device loss scenarios
+- Audit logging: All MFA events (enable, disable, login attempts) are logged
+- Admin visibility: Admins can see which users have MFA enabled
+
+**Note**: MFA is optional and configured per-user. Existing users are not affected when MFA is added to the system.
+
 ### Admin Panel (Admin Only)
 
 Access comprehensive administration features:
@@ -340,6 +372,14 @@ The dashboard provides:
 - **Password Hashing**: Werkzeug password hashing (bcrypt)
 - **SQL Injection Prevention**: SQLAlchemy ORM with parameterized queries
 - **XSS Prevention**: Markdown sanitization with Bleach
+- **Multi-Factor Authentication (MFA)**: Optional per-user TOTP-based 2FA:
+  - QR code setup with standard authenticator apps (Google Authenticator, Authy, Microsoft Authenticator)
+  - 10 one-time backup recovery codes per user
+  - Rate limiting to prevent brute force attacks (10 attempts per 15 minutes)
+  - Encrypted secret storage using Fernet symmetric encryption
+  - Backup codes hashed with bcrypt (same as passwords)
+  - Complete audit trail of MFA events (enable, disable, login attempts)
+  - Admin visibility of MFA status for all users
 - **Comprehensive Audit Logging**: Complete audit trail tracking:
   - User actions (CREATE, UPDATE, DELETE, LOGIN, LOGOUT)
   - IOC operations (create, edit, enrich, export, review status changes)

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}MFA Backup Codes - IOC Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h4 class="mb-0"><i class="bi bi-key"></i> MFA Backup Codes</h4>
+            </div>
+            <div class="card-body">
+                {% if first_time %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>MFA has been enabled successfully!</strong>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>New backup codes have been generated.</strong> Your old backup codes are no longer valid.
+                    </div>
+                {% endif %}
+
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Important:</strong> Save these backup codes in a safe place. Each code can only be used once. If you lose access to your authenticator app, you can use these codes to log in.
+                </div>
+
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Your Backup Codes</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="copyAllCodes()">
+                                <i class="bi bi-clipboard"></i> Copy All
+                            </button>
+                        </div>
+                        <div class="row" id="backup-codes">
+                            {% for code in backup_codes %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control font-monospace text-center" value="{{ code }}" readonly>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-light mt-3">
+                    <p class="mb-2"><strong>Tips for storing backup codes:</strong></p>
+                    <ul class="mb-0">
+                        <li>Print them and store in a safe place</li>
+                        <li>Save them in a password manager</li>
+                        <li>Do not store them in plain text on your computer</li>
+                        <li>Each code can only be used once</li>
+                    </ul>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-outline-secondary" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Print Codes
+                    </button>
+                    <a href="{{ url_for('user.profile') }}" class="btn btn-primary">
+                        <i class="bi bi-check"></i> I've Saved My Codes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyAllCodes() {
+    const codes = [
+        {% for code in backup_codes %}'{{ code }}',{% endfor %}
+    ];
+    const codesText = codes.join('\n');
+
+    navigator.clipboard.writeText(codesText).then(() => {
+        // Show feedback
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+        }, 2000);
+    });
+}
+</script>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #backup-codes, #backup-codes * {
+        visibility: visible;
+    }
+    #backup-codes {
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+}
+</style>
+{% endblock %}

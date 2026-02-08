@@ -22,6 +22,14 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
+    # MFA fields
+    mfa_enabled = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    mfa_secret = db.Column(db.String(255), nullable=True)  # Encrypted TOTP secret
+    mfa_backup_codes = db.Column(db.Text, nullable=True)  # JSON array of hashed codes
+    mfa_backup_codes_used = db.Column(db.Text, nullable=True)  # JSON array of used indices
+    mfa_enabled_at = db.Column(db.DateTime, nullable=True)
+    mfa_last_used = db.Column(db.DateTime, nullable=True)
+
     # Relationships
     iocs_created = db.relationship('IOC', backref='creator', lazy='dynamic', foreign_keys='IOC.created_by')
     iocs_updated = db.relationship('IOC', backref='updater', lazy='dynamic', foreign_keys='IOC.updated_by')
@@ -72,6 +80,67 @@ class User(UserMixin, db.Model):
         """Update last login timestamp"""
         self.last_login = datetime.utcnow()
         db.session.commit()
+
+    # MFA Methods
+    def set_mfa_secret(self, secret):
+        """Encrypt and store MFA secret"""
+        from app.utils.mfa import encrypt_secret
+        self.mfa_secret = encrypt_secret(secret)
+
+    def get_mfa_secret(self):
+        """Decrypt MFA secret"""
+        from app.utils.mfa import decrypt_secret
+        if not self.mfa_secret:
+            return None
+        return decrypt_secret(self.mfa_secret)
+
+    def verify_totp(self, code):
+        """Verify TOTP code"""
+        import pyotp
+        if not self.mfa_enabled or not self.mfa_secret:
+            return False
+        totp = pyotp.TOTP(self.get_mfa_secret())
+        return totp.verify(code, valid_window=1)  # Allow ±30 seconds for clock skew
+
+    def generate_backup_codes(self, count=10):
+        """Generate and store hashed backup codes"""
+        import secrets
+        import string
+        import json
+        from werkzeug.security import generate_password_hash
+        codes = []
+        for _ in range(count):
+            code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            codes.append(f"{code[:4]}-{code[4:]}")  # Format: XXXX-XXXX
+        hashed = [generate_password_hash(code) for code in codes]
+        self.mfa_backup_codes = json.dumps(hashed)
+        self.mfa_backup_codes_used = json.dumps([])
+        return codes  # Return plaintext codes for one-time display
+
+    def verify_backup_code(self, code):
+        """Verify and mark backup code as used"""
+        import json
+        from werkzeug.security import check_password_hash
+        if not self.mfa_backup_codes:
+            return False
+        codes = json.loads(self.mfa_backup_codes)
+        used = json.loads(self.mfa_backup_codes_used or '[]')
+        for idx, hashed_code in enumerate(codes):
+            if idx not in used and check_password_hash(hashed_code, code):
+                used.append(idx)
+                self.mfa_backup_codes_used = json.dumps(used)
+                db.session.commit()
+                return True
+        return False
+
+    def get_remaining_backup_codes_count(self):
+        """Count unused backup codes"""
+        import json
+        if not self.mfa_backup_codes:
+            return 0
+        codes = json.loads(self.mfa_backup_codes)
+        used = json.loads(self.mfa_backup_codes_used or '[]')
+        return len(codes) - len(used)
 
     def to_dict(self):
         """Convert user to dictionary"""

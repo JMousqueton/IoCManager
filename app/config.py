@@ -78,6 +78,12 @@ class Config:
     IOC_DEFAULT_TTL_DAYS = int(os.getenv('IOC_DEFAULT_TTL_DAYS', 0))  # 0 = no expiration
     IOC_AUTO_EXPIRE_ENABLED = os.getenv('IOC_AUTO_EXPIRE_ENABLED', 'False').lower() == 'true'
 
+    # MFA Configuration
+    MFA_ENABLED = os.getenv('MFA_ENABLED', 'True').lower() == 'true'
+    MFA_ISSUER_NAME = os.getenv('MFA_ISSUER_NAME', 'IOC Manager')
+    MFA_RATE_LIMIT_ATTEMPTS = int(os.getenv('MFA_RATE_LIMIT_ATTEMPTS', '10'))
+    MFA_RATE_LIMIT_WINDOW = int(os.getenv('MFA_RATE_LIMIT_WINDOW', '15'))  # minutes
+
     # WTForms
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = None

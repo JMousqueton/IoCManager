@@ -23,6 +23,7 @@
                         <th>Username</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>MFA</th>
                         <th>Status</th>
                         <th>Last Login</th>
                         <th>Created</th>
@@ -40,6 +41,15 @@
                             </td>
                             <td>{{ user.email }}</td>
                             <td><span class="badge bg-{% if user.role == 'Admin' %}danger{% elif user.role == 'User' %}primary{% else %}secondary{% endif %}">{{ user.role }}</span></td>
+                            <td>
+                                {% if user.mfa_enabled %}
+                                    <span class="badge bg-success" title="Enabled on {{ user.mfa_enabled_at.strftime('%Y-%m-%d') if user.mfa_enabled_at else 'Unknown' }}">
+                                        <i class="bi bi-shield-check"></i> Enabled
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if user.is_active %}
                                     <span class="badge bg-success">Active</span>
@@ -61,7 +71,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 No users found. <a href="{{ url_for('user.create') }}">Create your first user</a>
                             </td>
                         </tr>
