@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app import db
 from app.models.user import User
+from app.models.audit import AuditLog
 from app.forms.user import UserForm, ProfileForm, ChangePasswordForm
 
 user_bp = Blueprint('user', __name__)
@@ -58,6 +59,17 @@ def create():
             user.set_password('ChangeMe123!')
 
         db.session.add(user)
+        db.session.flush()  # Flush to get user.id
+
+        # Audit log
+        log = AuditLog(
+            user_id=current_user.id,
+            action='CREATE',
+            resource_type='User',
+            resource_id=user.id,
+            details=f'Created user {user.username} with role {user.role}'
+        )
+        db.session.add(log)
         db.session.commit()
 
         flash(f'User {user.username} created successfully.', 'success')
@@ -107,6 +119,15 @@ def edit(id):
         if form.password.data:
             user.set_password(form.password.data)
 
+        # Audit log
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='User',
+            resource_id=user.id,
+            details=f'Updated user {user.username} (role: {user.role}, active: {user.is_active})'
+        )
+        db.session.add(log)
         db.session.commit()
 
         flash('User updated successfully.', 'success')
@@ -138,6 +159,18 @@ def delete(id):
         return redirect(url_for('user.list'))
 
     username = user.username
+    user_id = user.id
+
+    # Audit log (before deletion)
+    log = AuditLog(
+        user_id=current_user.id,
+        action='DELETE',
+        resource_type='User',
+        resource_id=user_id,
+        details=f'Deleted user {username}'
+    )
+    db.session.add(log)
+
     db.session.delete(user)
     db.session.commit()
 
