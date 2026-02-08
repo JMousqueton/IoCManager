@@ -52,6 +52,13 @@
             <i class="bi bi-key"></i> API Keys
         </a>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'reports' %}active{% endif %}"
+           href="{{ url_for('admin.reports') }}"
+           role="tab">
+            <i class="bi bi-envelope"></i> Reports
+        </a>
+    </li>
 </ul>
 
 <!-- Tab Content -->
@@ -292,6 +299,162 @@
                     </button>
                     <small class="form-text text-muted d-block mt-2">
                         <i class="bi bi-info-circle"></i> Click this button after saving API keys to apply changes without restarting the application.
+                    </small>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Reports Tab -->
+    {% if active_tab == 'reports' %}
+    <div class="tab-pane fade show active" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-envelope"></i> Email & Reports Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> Changes to configuration require clicking "Reload Configuration" to take effect.
+                    Settings are stored in the <code>.env</code> file.
+                </div>
+
+                <form method="POST" action="{{ url_for('admin.save_reports') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- SMTP Configuration -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-server"></i> SMTP Server Configuration
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">Mail Server</label>
+                                <input type="text" class="form-control"
+                                       name="mail_server"
+                                       value="{{ report_config.MAIL_SERVER }}"
+                                       placeholder="smtp.example.com">
+                                <small class="form-text text-muted">SMTP server hostname or IP address</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Port</label>
+                                <input type="number" class="form-control"
+                                       name="mail_port"
+                                       value="{{ report_config.MAIL_PORT }}"
+                                       placeholder="587">
+                                <small class="form-text text-muted">Usually 587 (TLS) or 465 (SSL)</small>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Use TLS</label>
+                                <select class="form-select" name="mail_use_tls">
+                                    <option value="True" {% if report_config.MAIL_USE_TLS == 'True' %}selected{% endif %}>True</option>
+                                    <option value="False" {% if report_config.MAIL_USE_TLS == 'False' %}selected{% endif %}>False</option>
+                                </select>
+                                <small class="form-text text-muted">Enable STARTTLS (port 587)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Use SSL</label>
+                                <select class="form-select" name="mail_use_ssl">
+                                    <option value="True" {% if report_config.MAIL_USE_SSL == 'True' %}selected{% endif %}>True</option>
+                                    <option value="False" {% if report_config.MAIL_USE_SSL == 'False' %}selected{% endif %}>False</option>
+                                </select>
+                                <small class="form-text text-muted">Enable SSL/TLS (port 465)</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control"
+                                   name="mail_username"
+                                   value="{{ report_config.MAIL_USERNAME }}"
+                                   placeholder="your-email@example.com"
+                                   autocomplete="username">
+                            <small class="form-text text-muted">SMTP authentication username (usually your email)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control"
+                                       name="mail_password"
+                                       value="{{ report_config.MAIL_PASSWORD }}"
+                                       placeholder="Enter SMTP password"
+                                       autocomplete="current-password">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePassword(this)" title="Show/Hide">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">SMTP authentication password or app-specific password</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Default Sender</label>
+                            <input type="email" class="form-control"
+                                   name="mail_default_sender"
+                                   value="{{ report_config.MAIL_DEFAULT_SENDER }}"
+                                   placeholder="ioc-manager@example.com">
+                            <small class="form-text text-muted">Email address that reports will be sent from</small>
+                        </div>
+                    </div>
+
+                    <!-- Email Reports Configuration -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-calendar-check"></i> Report Settings
+                        </h6>
+
+                        <div class="mb-3">
+                            <label class="form-label">Daily Report Recipients</label>
+                            <input type="text" class="form-control"
+                                   name="daily_recipients"
+                                   value="{{ report_config.DAILY_REPORT_RECIPIENTS }}"
+                                   placeholder="user1@example.com,user2@example.com">
+                            <small class="form-text text-muted">Comma-separated list of email addresses for daily reports</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Weekly Report Recipients</label>
+                            <input type="text" class="form-control"
+                                   name="weekly_recipients"
+                                   value="{{ report_config.WEEKLY_REPORT_RECIPIENTS }}"
+                                   placeholder="user1@example.com,manager@example.com">
+                            <small class="form-text text-muted">Comma-separated list of email addresses for weekly reports</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Reports Enabled</label>
+                            <select class="form-select" name="report_enabled">
+                                <option value="True" {% if report_config.REPORT_ENABLED == 'True' %}selected{% endif %}>Enabled</option>
+                                <option value="False" {% if report_config.REPORT_ENABLED == 'False' %}selected{% endif %}>Disabled</option>
+                            </select>
+                            <small class="form-text text-muted">Enable or disable automated email reports</small>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Configuration
+                        </button>
+                        <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Reload Configuration Form -->
+                <form method="POST" action="{{ url_for('admin.reload_config') }}" class="mt-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-arrow-clockwise"></i> Reload Configuration
+                    </button>
+                    <small class="form-text text-muted d-block mt-2">
+                        <i class="bi bi-info-circle"></i> Click this button after saving to apply changes without restarting the application.
                     </small>
                 </form>
             </div>

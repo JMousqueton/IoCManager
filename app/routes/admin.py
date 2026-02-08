@@ -355,6 +355,18 @@ def reload_config():
             'URLSCAN_NO_SSL_CHECK': os.getenv('URLSCAN_NO_SSL_CHECK', 'False').lower() == 'true',
             'URL_ENRICHMENT_NO_SSL_CHECK': os.getenv('URL_ENRICHMENT_NO_SSL_CHECK', 'False').lower() == 'true',
             'DOMAIN_ENRICHMENT_NO_SSL_CHECK': os.getenv('DOMAIN_ENRICHMENT_NO_SSL_CHECK', 'False').lower() == 'true',
+            # Mail configuration
+            'MAIL_SERVER': os.getenv('MAIL_SERVER', 'localhost'),
+            'MAIL_PORT': int(os.getenv('MAIL_PORT', 587)),
+            'MAIL_USE_TLS': os.getenv('MAIL_USE_TLS', 'True').lower() == 'true',
+            'MAIL_USE_SSL': os.getenv('MAIL_USE_SSL', 'False').lower() == 'true',
+            'MAIL_USERNAME': os.getenv('MAIL_USERNAME', ''),
+            'MAIL_PASSWORD': os.getenv('MAIL_PASSWORD', ''),
+            'MAIL_DEFAULT_SENDER': os.getenv('MAIL_DEFAULT_SENDER', 'ioc-manager@example.com'),
+            # Report configuration
+            'DAILY_REPORT_RECIPIENTS': os.getenv('DAILY_REPORT_RECIPIENTS', '').split(','),
+            'WEEKLY_REPORT_RECIPIENTS': os.getenv('WEEKLY_REPORT_RECIPIENTS', '').split(','),
+            'REPORT_ENABLED': os.getenv('REPORT_ENABLED', 'True').lower() == 'true',
         }
 
         # Update current app config
@@ -372,8 +384,151 @@ def reload_config():
         db.session.add(log)
         db.session.commit()
 
-        flash('Configuration reloaded successfully! API keys are now active.', 'success')
+        flash('Configuration reloaded successfully! Changes are now active.', 'success')
     except Exception as e:
         flash(f'Error reloading configuration: {str(e)}', 'danger')
 
-    return redirect(url_for('admin.api_keys'))
+    # Redirect back to the referring page or default to api_keys
+    referer = request.referrer
+    if referer and 'reports' in referer:
+        return redirect(url_for('admin.reports'))
+    else:
+        return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/reports')
+@login_required
+@admin_required
+def reports():
+    """Report configuration management page"""
+    # Read current report settings from .env file
+    env_path = Path('.env')
+    report_config = {
+        'MAIL_SERVER': '',
+        'MAIL_PORT': '',
+        'MAIL_USE_TLS': '',
+        'MAIL_USE_SSL': '',
+        'MAIL_USERNAME': '',
+        'MAIL_PASSWORD': '',
+        'MAIL_DEFAULT_SENDER': '',
+        'DAILY_REPORT_RECIPIENTS': '',
+        'WEEKLY_REPORT_RECIPIENTS': '',
+        'REPORT_ENABLED': ''
+    }
+
+    if env_path.exists():
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                for key in report_config.keys():
+                    if line.startswith(f'{key}='):
+                        # Extract value after = (handle both quoted and unquoted values)
+                        value = line.split('=', 1)[1].strip()
+                        # Remove quotes if present
+                        value = value.strip('"\'')
+                        report_config[key] = value
+                        break
+
+    return render_template('admin/index.html',
+                         active_tab='reports',
+                         report_config=report_config)
+
+
+@admin_bp.route('/reports/save', methods=['POST'])
+@login_required
+@admin_required
+def save_reports():
+    """Save report configuration to .env file"""
+    mail_server = request.form.get('mail_server', '').strip()
+    mail_port = request.form.get('mail_port', '').strip()
+    mail_use_tls = request.form.get('mail_use_tls', '').strip()
+    mail_use_ssl = request.form.get('mail_use_ssl', '').strip()
+    mail_username = request.form.get('mail_username', '').strip()
+    mail_password = request.form.get('mail_password', '').strip()
+    mail_default_sender = request.form.get('mail_default_sender', '').strip()
+    daily_recipients = request.form.get('daily_recipients', '').strip()
+    weekly_recipients = request.form.get('weekly_recipients', '').strip()
+    report_enabled = request.form.get('report_enabled', '').strip()
+
+    env_path = Path('.env')
+
+    try:
+        # Read current .env file
+        env_lines = []
+        if env_path.exists():
+            with open(env_path, 'r') as f:
+                env_lines = f.readlines()
+
+        # Update report config in the lines
+        keys_to_update = {
+            'MAIL_SERVER': mail_server,
+            'MAIL_PORT': mail_port,
+            'MAIL_USE_TLS': mail_use_tls,
+            'MAIL_USE_SSL': mail_use_ssl,
+            'MAIL_USERNAME': mail_username,
+            'MAIL_PASSWORD': mail_password,
+            'MAIL_DEFAULT_SENDER': mail_default_sender,
+            'DAILY_REPORT_RECIPIENTS': daily_recipients,
+            'WEEKLY_REPORT_RECIPIENTS': weekly_recipients,
+            'REPORT_ENABLED': report_enabled
+        }
+
+        updated_keys = set()
+        new_lines = []
+
+        for line in env_lines:
+            line_stripped = line.strip()
+            updated = False
+
+            for key, value in keys_to_update.items():
+                if line_stripped.startswith(f'{key}='):
+                    # Update existing key
+                    new_lines.append(f'{key}={value}\n')
+                    updated_keys.add(key)
+                    updated = True
+                    break
+
+            if not updated:
+                new_lines.append(line)
+
+        # Add any keys that weren't found in the file
+        for key, value in keys_to_update.items():
+            if key not in updated_keys:
+                # Find the appropriate section to add the key
+                insert_index = len(new_lines)
+
+                if key.startswith('MAIL_'):
+                    # Find Email Configuration section
+                    for i, line in enumerate(new_lines):
+                        if 'Email Configuration' in line or 'MAIL_' in line:
+                            insert_index = i + 1
+                            break
+                elif 'REPORT' in key:
+                    # Find Email Reports section
+                    for i, line in enumerate(new_lines):
+                        if 'Email Reports' in line or 'REPORT_' in line:
+                            insert_index = i + 1
+                            break
+
+                new_lines.insert(insert_index, f'{key}={value}\n')
+
+        # Write updated content back to .env
+        with open(env_path, 'w') as f:
+            f.writelines(new_lines)
+
+        # Audit log
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='Configuration',
+            resource_id=None,
+            details='Updated report configuration'
+        )
+        db.session.add(log)
+        db.session.commit()
+
+        flash('Report configuration saved successfully. Click "Reload Configuration" to apply changes without restart.', 'success')
+    except Exception as e:
+        flash(f'Error saving report configuration: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.reports'))
