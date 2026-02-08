@@ -195,6 +195,17 @@ def edit(id):
 
         db.session.commit()
 
+        # Create audit log
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='IOC',
+            resource_id=ioc.id,
+            details=f'Updated IOC: {ioc.value[:50]}{"..." if len(ioc.value) > 50 else ""}'
+        )
+        db.session.add(log)
+        db.session.commit()
+
         flash('IOC updated successfully.', 'success')
         return redirect(url_for('ioc.detail', id=id))
 
