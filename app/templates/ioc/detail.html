@@ -1500,10 +1500,27 @@
                     <div>{{ ioc.updated_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
                 </div>
 
-                <div class="mb-0">
+                <div class="mb-3">
                     <small class="text-muted">Created By</small>
-                    <div>{{ ioc.creator.username }}</div>
+                    <div>
+                        <a href="{{ url_for('user.detail', id=ioc.created_by) }}" target="_blank" class="text-decoration-none">
+                            {{ ioc.creator.username }}
+                            <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </div>
                 </div>
+
+                {% if ioc.updated_by %}
+                <div class="mb-0">
+                    <small class="text-muted">Updated By</small>
+                    <div>
+                        <a href="{{ url_for('user.detail', id=ioc.updated_by) }}" target="_blank" class="text-decoration-none">
+                            {{ ioc.updater.username }}
+                            <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 

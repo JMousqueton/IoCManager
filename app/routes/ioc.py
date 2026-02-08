@@ -171,6 +171,7 @@ def edit(id):
         ioc.notes = form.notes.data
         ioc.is_active = form.is_active.data
         ioc.false_positive = form.false_positive.data
+        ioc.updated_by = current_user.id
 
         # Handle expiration
         from flask import request

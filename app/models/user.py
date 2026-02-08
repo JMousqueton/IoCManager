@@ -24,6 +24,7 @@ class User(UserMixin, db.Model):
 
     # Relationships
     iocs_created = db.relationship('IOC', backref='creator', lazy='dynamic', foreign_keys='IOC.created_by')
+    iocs_updated = db.relationship('IOC', backref='updater', lazy='dynamic', foreign_keys='IOC.updated_by')
     audit_logs = db.relationship('AuditLog', backref='user', lazy='dynamic')
     sessions = db.relationship('Session', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
