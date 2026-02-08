@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.models.ioc import IOC, IOCType
 from app.models.tag import Tag
+from app.models.audit import AuditLog
 from app.forms.ioc import IOCForm, IOCSearchForm, IOCBulkImportForm
 from sqlalchemy import or_
 
@@ -46,10 +47,8 @@ def list():
     if form.is_active.data:
         query = query.filter_by(is_active=bool(int(form.is_active.data)))
 
-    if form.tags.data:
-        tag_names = [t.strip() for t in form.tags.data.split(',')]
-        for tag_name in tag_names:
-            query = query.join(IOC.tags).filter(Tag.name.ilike(f'%{tag_name}%'))
+    if form.needs_review.data:
+        query = query.filter_by(needs_review=bool(int(form.needs_review.data)))
 
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -237,6 +236,35 @@ def delete(id):
 
     flash('IOC deleted successfully.', 'success')
     return redirect(url_for('ioc.list'))
+
+
+@ioc_bp.route('/<int:id>/toggle-review', methods=['POST'])
+@login_required
+def toggle_review(id):
+    """Toggle review status for an IOC"""
+
+    ioc = IOC.query.get_or_404(id)
+
+    # Toggle the review flag
+    ioc.needs_review = not ioc.needs_review
+
+    # Audit log
+    log = AuditLog(
+        user_id=current_user.id,
+        action='UPDATE',
+        resource_type='IOC',
+        resource_id=ioc.id,
+        details=f'{"Marked" if ioc.needs_review else "Unmarked"} IOC for review'
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    if ioc.needs_review:
+        flash('IOC marked for review. Any user can now edit this IOC.', 'success')
+    else:
+        flash('IOC unmarked for review. Normal edit permissions restored.', 'success')
+
+    return redirect(url_for('ioc.detail', id=id))
 
 
 @ioc_bp.route('/bulk-import', methods=['GET', 'POST'])

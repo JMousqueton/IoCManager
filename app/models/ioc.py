@@ -74,6 +74,9 @@ class IOC(db.Model):
     expires_at = db.Column(db.DateTime, nullable=True, index=True)  # Nullable for backward compatibility
     expired_reason = db.Column(db.String(100), nullable=True)  # 'auto_expired', 'manual', etc.
 
+    # Review flag - allows any user to edit when set to True
+    needs_review = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
     # Relationships
     tags = db.relationship('Tag', secondary='ioc_tags', backref=db.backref('iocs', lazy='dynamic'))
 

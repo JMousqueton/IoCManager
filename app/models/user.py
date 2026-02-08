@@ -58,6 +58,9 @@ class User(UserMixin, db.Model):
             return True
         if self.role == 'User' and ioc.created_by == self.id:
             return True
+        # Allow any user (including viewers) to edit IOCs marked for review
+        if ioc.needs_review and self.role in ['User', 'Admin']:
+            return True
         return False
 
     def can_delete_ioc(self, ioc):

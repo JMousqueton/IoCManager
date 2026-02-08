@@ -48,6 +48,10 @@
                     {{ form.is_active.label(class="form-label") }}
                     {{ form.is_active(class="form-select") }}
                 </div>
+                <div class="col-md-2">
+                    {{ form.needs_review.label(class="form-label") }}
+                    {{ form.needs_review(class="form-select") }}
+                </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Search
@@ -80,7 +84,15 @@
                     {% if iocs %}
                         {% for ioc in iocs %}
                         <tr>
-                            <td><span class="badge bg-secondary">{{ ioc.ioc_type.name }}</span></td>
+                            <td>
+                                <span class="badge bg-secondary">{{ ioc.ioc_type.name }}</span>
+                                {% if ioc.needs_review %}
+                                <br>
+                                <span class="badge bg-warning text-dark mt-1" title="This IOC needs review">
+                                    <i class="bi bi-flag-fill"></i> To be reviewed
+                                </span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <a href="{{ url_for('ioc.detail', id=ioc.id) }}">
                                     {{ ioc.value[:50] }}{% if ioc.value|length > 50 %}...{% endif %}

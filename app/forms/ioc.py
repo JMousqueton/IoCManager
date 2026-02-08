@@ -80,7 +80,11 @@ class IOCSearchForm(FlaskForm):
         ('1', 'Active'),
         ('0', 'Inactive')
     ], validators=[Optional()])
-    tags = StringField('Tags (comma-separated)', validators=[Optional()])
+    needs_review = SelectField('Review Status', choices=[
+        ('', 'All'),
+        ('1', 'To be reviewed'),
+        ('0', 'Not for review')
+    ], validators=[Optional()])
     submit = SubmitField('Search')
 
 
