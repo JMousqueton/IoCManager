@@ -1,4 +1,4 @@
-# IOC Manager
+# IOC Manager by Julien Mousqueton
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
@@ -19,6 +19,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 - **TLP Support**: Traffic Light Protocol (WHITE, GREEN, AMBER, RED) for information sharing
 - **Tagging System**: Organize IOCs with customizable colored tags
 - **IOC Expiration**: Automatic TTL-based expiration with configurable policies
+- **Collaborative Review**: Mark IOCs for review to enable collaborative editing by any user
 
 ### Threat Intelligence Enrichment
 - **VirusTotal Integration**: Automatic malware analysis and reputation scoring
@@ -32,19 +33,28 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 - **Comments & Discussions**: Threaded comments with @mentions and Markdown support
 - **YARA Rule Generation**: Auto-generate YARA and YARA-X detection rules
 - **STIX 2.1 Export**: Export IOCs in STIX format for TAXII sharing
-- **Audit Logging**: Complete audit trail of all actions
+- **Audit Logging**: Complete audit trail of all actions with user tracking
+- **Change Tracking**: Track who created and last updated each IOC
 
 ### Reporting & Automation
 - **Email Reports**: Automated daily and weekly reports with statistics and trends
 - **Dashboard**: Real-time metrics and visualizations
-- **Search & Filter**: Advanced filtering by type, severity, tags, and date ranges
+- **Search & Filter**: Advanced filtering by type, severity, tags, review status, and date ranges
 - **Bulk Operations**: Import and export IOCs (coming soon)
+
+### Administration & Configuration
+- **Admin Panel**: Centralized administration interface
+- **Reports Configuration**: Web-based email/SMTP configuration with hot-reload
+- **API Key Management**: Secure API key configuration (VirusTotal, URLScan.io, etc.)
+- **Audit Logs Viewer**: Search, filter, and purge audit logs with clickable resource links
+- **User Management**: Create, edit, and manage user accounts and permissions
 
 ### Security & Access Control
 - **Role-Based Access Control (RBAC)**: Admin, User, and Viewer roles
 - **User Management**: User registration, authentication, and session management
 - **Registration Control**: Enable/disable public registration
-- **Audit Trail**: Track all user actions and changes
+- **Comprehensive Audit Trail**: Track all user actions, IOC changes, and system events
+- **Admin Audit Viewer**: Advanced search and filtering of audit logs with smart resource linking
 
 ## 📋 Requirements
 
@@ -60,7 +70,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/IoCManager.git
+   git clone https://github.com/JMousqueton/IoCManager.git
    cd IoCManager
    ```
 
@@ -103,6 +113,13 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 ## ⚙️ Configuration
 
 ### Environment Variables
+
+Configuration can be done via:
+1. **`.env` file** - Edit manually for initial setup
+2. **Admin Panel** (recommended) - Web-based configuration with hot-reload for:
+   - API keys (VirusTotal, URLScan.io)
+   - Email/SMTP settings
+   - Report recipients
 
 Key configuration options in `.env`:
 
@@ -182,6 +199,48 @@ Add comments to IOCs for collaboration:
 - **Reply** to create threaded discussions
 - **Edit/Delete** your own comments
 
+### IOC Review Workflow
+
+Enable collaborative review for quality assurance:
+1. Open an IOC detail page
+2. Toggle the **"To be reviewed"** switch in the metadata section
+3. IOC will show a review badge in the IOC list
+4. Any User or Admin can now edit the IOC (not just the creator)
+5. After review is complete, toggle the switch again to remove review status
+6. All review status changes are logged in the audit trail
+
+### Admin Panel (Admin Only)
+
+Access comprehensive administration features:
+
+**API Keys Tab**:
+- Configure VirusTotal API key
+- Configure URLScan.io API key
+- Hot-reload configuration without restart
+
+**Reports Tab**:
+- Configure SMTP server settings (server, port, TLS/SSL)
+- Set email credentials
+- Configure report recipients (daily/weekly)
+- Enable/disable automated reports
+- Changes apply immediately without restart
+
+**Audit Logs Tab**:
+- Search and filter audit logs by:
+  - Resource type (IOC, User, Tag, Configuration, Comment)
+  - Action (CREATE, UPDATE, DELETE, LOGIN, ENRICH, EXPORT, SEARCH)
+  - User
+  - Date range
+- Smart filtering: Selecting "IOC" includes IOC, IOCRelationship, and Comment entries
+- Click on resources to view details (opens in new tab)
+- Purge logs older than 30 days
+
+**Users Tab**:
+- Create, edit, and delete user accounts
+- Assign roles (Admin, User, Viewer)
+- Activate/deactivate accounts
+- View user statistics (IOCs created, audit logs)
+
 ## 🔧 Advanced Features
 
 ### Email Reports
@@ -203,7 +262,6 @@ Schedule with cron:
 0 8 * * 1 cd /path/to/IoCManager && /path/to/venv/bin/python scripts/send_weekly_report.py
 ```
 
-See [docs/EMAIL_REPORTS.md](docs/EMAIL_REPORTS.md) for detailed setup.
 
 ### IOC Expiration
 
@@ -218,6 +276,30 @@ IOC_AUTO_EXPIRE_ENABLED=True
 0 2 * * * cd /path/to/IoCManager && /path/to/venv/bin/python scripts/expire_iocs.py
 ```
 
+### Audit Logging & Compliance
+
+Comprehensive audit trail for compliance and forensics:
+
+**What's Logged**:
+- User authentication (LOGIN, LOGOUT)
+- IOC operations (CREATE, UPDATE, DELETE, ENRICH, EXPORT)
+- User management (CREATE, UPDATE, DELETE users)
+- Configuration changes (API keys, email settings)
+- Comment activity
+- Review status changes
+
+**Audit Log Features**:
+- **Smart Filtering**: Filter by resource type, action, user, and date range
+- **Resource Linking**: Click on IOCs, users, or comments to view details
+- **Automatic Purge**: Remove logs older than 30 days to manage database size
+- **Export Capability**: Generate compliance reports from audit data
+
+**Accessing Audit Logs** (Admin only):
+1. Navigate to **Admin → Audit Logs**
+2. Use filters to find specific events
+3. Click on resources for detailed view
+4. Use purge button to clean old logs
+
 ### STIX 2.1 Export
 
 Export IOCs for TAXII sharing:
@@ -229,9 +311,17 @@ Export IOCs for TAXII sharing:
 
 | Role | Permissions |
 |------|-------------|
-| **Admin** | Full access: manage users, delete any content, access admin panel |
-| **User** | Create, edit, delete own IOCs and comments |
+| **Admin** | Full access: manage users, delete any content, access admin panel, configure system settings |
+| **User** | Create, edit own IOCs and comments, edit IOCs marked for review |
 | **Viewer** | Read-only access to IOCs and comments |
+
+### IOC Review Feature
+
+IOCs can be marked for collaborative review, allowing any User or Admin to edit them regardless of who created them. This feature enables:
+- **Quality Assurance**: Team members can review and improve IOCs
+- **Collaborative Enrichment**: Multiple analysts can contribute to IOC details
+- **Badge Visibility**: IOCs marked for review show a clear badge in the IOC list
+- **Audit Tracking**: All review status changes are logged in the audit trail
 
 ## 📊 Dashboard Metrics
 
@@ -250,7 +340,12 @@ The dashboard provides:
 - **Password Hashing**: Werkzeug password hashing (bcrypt)
 - **SQL Injection Prevention**: SQLAlchemy ORM with parameterized queries
 - **XSS Prevention**: Markdown sanitization with Bleach
-- **Audit Logging**: Complete audit trail of all actions
+- **Comprehensive Audit Logging**: Complete audit trail tracking:
+  - User actions (CREATE, UPDATE, DELETE, LOGIN, LOGOUT)
+  - IOC operations (create, edit, enrich, export, review status changes)
+  - User management operations
+  - Configuration changes
+  - Searchable audit log viewer with smart filtering and resource linking
 
 ## 🗂️ Project Structure
 
@@ -279,10 +374,10 @@ IoCManager/
 │   └── templates/            # Jinja2 templates
 ├── scripts/                  # Management scripts
 │   ├── init_db.py
+│   ├── download_asn_db.py
 │   ├── send_daily_report.py
 │   ├── send_weekly_report.py
 │   └── expire_iocs.py
-├── docs/                     # Documentation
 ├── instance/                 # Instance-specific files
 ├── .env                      # Environment variables
 ├── requirements.txt          # Python dependencies
@@ -299,25 +394,9 @@ export FLASK_DEBUG=True
 python run.py
 ```
 
-### Database Migrations
-
-Create new migration:
-```bash
-flask db migrate -m "Description of changes"
-flask db upgrade
-```
-
-### Running Tests
-
-```bash
-pytest tests/
-```
-
 ## 📚 Documentation
 
-- [Email Reports Setup](docs/EMAIL_REPORTS.md) - Configure automated reports
-- [IOC Expiration](docs/IOC_EXPIRATION.md) - TTL and expiration policies
-- [API Documentation](docs/API.md) - REST API reference (coming soon)
+comming soon... 
 
 ## 🤝 Contributing
 
@@ -346,27 +425,16 @@ Contributions are welcome! Please:
 **Issue**: VirusTotal enrichment failing
 - **Solution**: Verify API key, check rate limits (4 requests/minute for free tier)
 
-**Issue**: Database errors
-- **Solution**: Run migrations: `python scripts/migrate_add_*.py`
+**Issue**: Database errors or missing columns
+- **Solution**: Run migration scripts:
+  ```bash
+  python scripts/migrate_add_updated_by.py
+  python scripts/migrate_add_expiration.py
+  ```
 
 **Issue**: Permission denied errors
 - **Solution**: Ensure scripts are executable: `chmod +x scripts/*.py`
 
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more solutions.
-
-## 🗺️ Roadmap
-
-### Planned Features
-
-- [ ] RESTful API with API key authentication
-- [ ] Bulk import/export (CSV, JSON, MISP)
-- [ ] Advanced search with boolean operators
-- [ ] IOC watchlists/feeds
-- [ ] MISP integration
-- [ ] Dashboard charts and visualizations
-- [ ] Dark mode
-- [ ] File upload with hash extraction
-- [ ] Machine learning-based IOC scoring
 
 ## 📄 License
 
@@ -384,9 +452,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-- **Project Link**: https://github.com/yourusername/IoCManager
-- **Issues**: https://github.com/yourusername/IoCManager/issues
-- **Documentation**: https://github.com/yourusername/IoCManager/wiki
+- **Project Link**: https://github.com/JMousqueton/IoCManager
+- **Issues**: https://github.com/JMousqueton/IoCManager/issues
+- **Documentation**: https://github.com/JMousqueton/IoCManager/wiki
 
 ## 🌟 Show Your Support
 
