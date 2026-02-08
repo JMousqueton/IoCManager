@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from app import db
 from app.models.tag import Tag
 from app.models.audit import AuditLog
+from app.models.user import User
+from app.forms.admin import AuditLogSearchForm
+from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -532,3 +535,91 @@ def save_reports():
         flash(f'Error saving report configuration: {str(e)}', 'danger')
 
     return redirect(url_for('admin.reports'))
+
+
+@admin_bp.route('/audit')
+@login_required
+@admin_required
+def audit():
+    """Audit logs page with search and filtering"""
+    form = AuditLogSearchForm(request.args, meta={'csrf': False})
+
+    # Populate user choices
+    users = User.query.order_by(User.username).all()
+    form.user_id.choices = [(0, 'All Users')] + [(u.id, u.username) for u in users]
+
+    # Base query with relationship loading
+    query = AuditLog.query.join(User, AuditLog.user_id == User.id)
+
+    # Apply filters
+    if form.resource_type.data:
+        # When filtering by IOC, include IOC, IOCRelationship, and Comment
+        if form.resource_type.data == 'IOC':
+            query = query.filter(AuditLog.resource_type.in_(['IOC', 'IOCRelationship', 'Comment']))
+        else:
+            query = query.filter(AuditLog.resource_type == form.resource_type.data)
+
+    if form.action.data:
+        query = query.filter(AuditLog.action == form.action.data)
+
+    if form.user_id.data and form.user_id.data != 0:
+        query = query.filter(AuditLog.user_id == form.user_id.data)
+
+    if form.date_from.data:
+        # Start of day
+        start_date = datetime.combine(form.date_from.data, datetime.min.time())
+        query = query.filter(AuditLog.timestamp >= start_date)
+
+    if form.date_to.data:
+        # End of day
+        end_date = datetime.combine(form.date_to.data, datetime.max.time())
+        query = query.filter(AuditLog.timestamp <= end_date)
+
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    pagination = query.order_by(AuditLog.timestamp.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    logs = pagination.items
+
+    return render_template('admin/index.html',
+                         active_tab='audit',
+                         form=form,
+                         logs=logs,
+                         pagination=pagination)
+
+
+@admin_bp.route('/audit/purge', methods=['POST'])
+@login_required
+@admin_required
+def purge_audit_logs():
+    """Purge audit logs older than 30 days"""
+    try:
+        # Calculate date 30 days ago
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+
+        # Count logs to be deleted
+        count = AuditLog.query.filter(AuditLog.timestamp < thirty_days_ago).count()
+
+        # Delete old logs
+        AuditLog.query.filter(AuditLog.timestamp < thirty_days_ago).delete()
+
+        # Create audit log for this action
+        log = AuditLog(
+            user_id=current_user.id,
+            action='DELETE',
+            resource_type='AuditLog',
+            resource_id=None,
+            details=f'Purged {count} audit logs older than 30 days'
+        )
+        db.session.add(log)
+        db.session.commit()
+
+        flash(f'Successfully purged {count} audit log(s) older than 30 days.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error purging audit logs: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.audit'))

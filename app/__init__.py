@@ -165,3 +165,13 @@ def register_template_filters(app):
         """Parse WHOIS status code to human-readable format"""
         from app.utils.whois_status_parser import parse_whois_status
         return parse_whois_status(status)
+
+    @app.template_filter('extract_ioc_id')
+    def extract_ioc_id_filter(text):
+        """Extract IOC ID from text (e.g., 'IOC#123' or 'IOC #123' -> '123')"""
+        import re
+        if not text:
+            return None
+        # Match both "IOC#123" and "IOC #123" (with or without space/hash)
+        match = re.search(r'IOC\s*#?(\d+)', text)
+        return match.group(1) if match else None

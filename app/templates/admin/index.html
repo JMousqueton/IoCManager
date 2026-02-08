@@ -59,6 +59,13 @@
             <i class="bi bi-envelope"></i> Reports
         </a>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'audit' %}active{% endif %}"
+           href="{{ url_for('admin.audit') }}"
+           role="tab">
+            <i class="bi bi-clock-history"></i> Audit Logs
+        </a>
+    </li>
 </ul>
 
 <!-- Tab Content -->
@@ -457,6 +464,180 @@
                         <i class="bi bi-info-circle"></i> Click this button after saving to apply changes without restarting the application.
                     </small>
                 </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Audit Logs Tab -->
+    {% if active_tab == 'audit' %}
+    <div class="tab-pane fade show active" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Audit Logs</h5>
+            </div>
+            <div class="card-body">
+                <!-- Purge Button -->
+                <div class="alert alert-warning d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Database Maintenance:</strong> Purge audit logs older than 30 days to free up database space.
+                    </div>
+                    <form method="POST" action="{{ url_for('admin.purge_audit_logs') }}"
+                          onsubmit="return confirm('Are you sure you want to delete all audit logs older than 30 days? This action cannot be undone.');"
+                          style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i> Purge Old Logs
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Search Form -->
+                <form method="GET" action="{{ url_for('admin.audit') }}" class="mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            {{ form.resource_type.label(class="form-label") }}
+                            {{ form.resource_type(class="form-select form-select-sm") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.action.label(class="form-label") }}
+                            {{ form.action(class="form-select form-select-sm") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.user_id.label(class="form-label") }}
+                            {{ form.user_id(class="form-select form-select-sm") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.date_from.label(class="form-label") }}
+                            {{ form.date_from(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.date_to.label(class="form-label") }}
+                            {{ form.date_to(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Audit Logs Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Resource Type</th>
+                                <th>Resource</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if logs %}
+                                {% for log in logs %}
+                                <tr>
+                                    <td>
+                                        <small>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                    </td>
+                                    <td>
+                                        {% if log.user %}
+                                        <a href="{{ url_for('user.profile', id=log.user_id) }}" target="_blank" class="text-decoration-none">
+                                            {{ log.user.username }}
+                                            <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.action == 'CREATE' %}success{% elif log.action == 'UPDATE' %}primary{% elif log.action == 'DELETE' %}danger{% elif log.action == 'LOGIN' %}info{% elif log.action == 'LOGOUT' %}secondary{% else %}secondary{% endif %}">
+                                            {{ log.action }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.resource_type or '-' }}</td>
+                                    <td>
+                                        {% if log.resource_type == 'IOC' and log.resource_id %}
+                                        <a href="{{ url_for('ioc.detail', id=log.resource_id) }}" target="_blank" class="text-decoration-none">
+                                            IOC #{{ log.resource_id }}
+                                            <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                        {% elif log.resource_type == 'IOCRelationship' and log.resource_id %}
+                                        <a href="{{ url_for('ioc.detail', id=log.resource_id) }}" target="_blank" class="text-decoration-none">
+                                            IOC #{{ log.resource_id }}
+                                            <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                        {% elif log.resource_type == 'Comment' and log.resource_id %}
+                                        {% set ioc_id = log.details | extract_ioc_id %}
+                                        {% if ioc_id %}
+                                        <a href="{{ url_for('ioc.detail', id=ioc_id) }}#comments" target="_blank" class="text-decoration-none" title="View comment on IOC #{{ ioc_id }}">
+                                            Comment #{{ log.resource_id }}
+                                            <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                        {% else %}
+                                        Comment #{{ log.resource_id }}
+                                        {% endif %}
+                                        {% elif log.resource_type == 'User' and log.resource_id %}
+                                        <a href="{{ url_for('user.profile', id=log.resource_id) }}" target="_blank" class="text-decoration-none">
+                                            User #{{ log.resource_id }}
+                                            <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                        {% elif log.resource_id %}
+                                        {{ log.resource_type }} #{{ log.resource_id }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ log.details[:100] }}{% if log.details and log.details|length > 100 %}...{% endif %}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox"></i> No audit logs found
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if pagination and pagination.pages > 1 %}
+                <nav aria-label="Audit log pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.audit', page=pagination.prev_num, resource_type=form.resource_type.data, action=form.action.data, user_id=form.user_id.data, date_from=form.date_from.data, date_to=form.date_to.data) }}">
+                                Previous
+                            </a>
+                        </li>
+
+                        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('admin.audit', page=page_num, resource_type=form.resource_type.data, action=form.action.data, user_id=form.user_id.data, date_from=form.date_from.data, date_to=form.date_to.data) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.audit', page=pagination.next_num, resource_type=form.resource_type.data, action=form.action.data, user_id=form.user_id.data, date_from=form.date_from.data, date_to=form.date_to.data) }}">
+                                Next
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                {% endif %}
             </div>
         </div>
     </div>
