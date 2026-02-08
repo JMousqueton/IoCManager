@@ -546,7 +546,7 @@
                                     </td>
                                     <td>
                                         {% if log.user %}
-                                        <a href="{{ url_for('user.profile', id=log.user_id) }}" target="_blank" class="text-decoration-none">
+                                        <a href="{{ url_for('user.detail', id=log.user_id) }}" target="_blank" class="text-decoration-none">
                                             {{ log.user.username }}
                                             <i class="bi bi-box-arrow-up-right small"></i>
                                         </a>
