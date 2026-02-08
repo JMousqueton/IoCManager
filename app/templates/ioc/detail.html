@@ -1490,37 +1490,41 @@
                 <h5 class="mb-0">Metadata</h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <small class="text-muted">Created At</small>
-                    <div>{{ ioc.created_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
-                </div>
-
-                <div class="mb-3">
-                    <small class="text-muted">Updated At</small>
-                    <div>{{ ioc.updated_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
-                </div>
-
-                <div class="mb-3">
-                    <small class="text-muted">Created By</small>
-                    <div>
-                        <a href="{{ url_for('user.detail', id=ioc.created_by) }}" target="_blank" class="text-decoration-none">
-                            {{ ioc.creator.username }}
-                            <i class="bi bi-box-arrow-up-right small"></i>
-                        </a>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <small class="text-muted">Created At</small>
+                        <div>{{ ioc.created_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Created By</small>
+                        <div>
+                            <a href="{{ url_for('user.detail', id=ioc.created_by) }}" target="_blank" class="text-decoration-none">
+                                {{ ioc.creator.username }}
+                                <i class="bi bi-box-arrow-up-right small"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                {% if ioc.updated_by %}
-                <div class="mb-0">
-                    <small class="text-muted">Updated By</small>
-                    <div>
-                        <a href="{{ url_for('user.detail', id=ioc.updated_by) }}" target="_blank" class="text-decoration-none">
-                            {{ ioc.updater.username }}
-                            <i class="bi bi-box-arrow-up-right small"></i>
-                        </a>
+                <div class="row mb-0">
+                    <div class="col-md-6">
+                        <small class="text-muted">Updated At</small>
+                        <div>{{ ioc.updated_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Updated By</small>
+                        <div>
+                            {% if ioc.updated_by %}
+                            <a href="{{ url_for('user.detail', id=ioc.updated_by) }}" target="_blank" class="text-decoration-none">
+                                {{ ioc.updater.username }}
+                                <i class="bi bi-box-arrow-up-right small"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-                {% endif %}
             </div>
         </div>
 
