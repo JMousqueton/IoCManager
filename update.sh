@@ -114,7 +114,7 @@ create_backup() {
     mkdir -p "$BACKUP_DIR"
 
     # Backup critical files
-    if [ -f "app.py" ]; then
+    if [ -f "run.py" ]; then
         # Backup application code
         cp -r . "$BACKUP_DIR/" 2>/dev/null || warning "Could not create full backup"
 
@@ -126,7 +126,7 @@ create_backup() {
 
         success "Backup created at: $BACKUP_DIR"
     else
-        warning "No app.py found, skipping backup"
+        warning "No run.py found, skipping backup"
     fi
 }
 
