@@ -100,8 +100,8 @@
                         'text-wrap': 'wrap',
                         'text-max-width': '80px',
                         'background-color': ele => this.getNodeColor(ele.data()),
-                        'border-width': 2,
-                        'border-color': theme.nodeBorder,
+                        'border-width': ele => this.getBorderWidth(ele.data()),
+                        'border-color': ele => this.getBorderColor(ele.data()),
                         'width': ele => ele.data('is_center') ? 60 : 40,
                         'height': ele => ele.data('is_center') ? 60 : 40,
                         'color': theme.nodeText,
@@ -163,20 +163,54 @@
         }
 
         getNodeColor(nodeData) {
-            // Color by severity
-            const severityColors = {
-                'Critical': '#212529',
-                'High': '#dc3545',
-                'Medium': '#ffc107',
-                'Low': '#0dcaf0'
-            };
-
             // If inactive, use gray
             if (!nodeData.is_active) {
                 return '#6c757d';
             }
 
+            // Color by IOC type
+            const typeColors = {
+                'IPv4': '#0d6efd',      // Blue - Network
+                'IPv6': '#0dcaf0',      // Cyan - Network
+                'Domain': '#6f42c1',    // Purple - Infrastructure
+                'URL': '#d63384',       // Pink - Web
+                'SHA256': '#fd7e14',    // Orange - File
+                'SHA1': '#fd7e14',      // Orange - File
+                'MD5': '#fd7e14',       // Orange - File
+                'Email': '#20c997',     // Teal - Communication
+                'Hash': '#fd7e14'       // Orange - File (generic)
+            };
+
+            return typeColors[nodeData.type] || '#198754'; // Default green for unknown types
+        }
+
+        getBorderColor(nodeData) {
+            // Inactive nodes have gray border
+            if (!nodeData.is_active) {
+                return '#6c757d';
+            }
+
+            // Border color indicates severity
+            const severityColors = {
+                'Critical': '#212529',  // Black - Most severe
+                'High': '#dc3545',      // Red - High severity
+                'Medium': '#ffc107',    // Yellow - Medium severity
+                'Low': '#198754'        // Green - Low severity
+            };
+
             return severityColors[nodeData.severity] || '#6c757d';
+        }
+
+        getBorderWidth(nodeData) {
+            // Border width also indicates severity
+            const severityWidths = {
+                'Critical': 4,
+                'High': 3,
+                'Medium': 2,
+                'Low': 2
+            };
+
+            return severityWidths[nodeData.severity] || 2;
         }
 
         setupEventHandlers() {
