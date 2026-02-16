@@ -24,8 +24,8 @@
                 // Load initial graph data
                 const data = await this.loadGraphData(this.currentDepth);
 
-                // Check if we have any relationships
-                if (data.nodes.length === 0) {
+                // Check if we have any relationships (edges)
+                if (data.edges.length === 0) {
                     this.showEmptyState();
                     return;
                 }
@@ -236,12 +236,20 @@
         async changeDepth(depth) {
             try {
                 this.currentDepth = depth;
-                this.showLoading();
 
+                // Load data first
                 const data = await this.loadGraphData(depth);
 
-                if (data.nodes.length === 0) {
+                // Check if we have any relationships (edges)
+                if (data.edges.length === 0) {
                     this.showEmptyState();
+                    return;
+                }
+
+                // If Cytoscape instance doesn't exist, reinitialize
+                if (!this.cy) {
+                    this.initializeCytoscape(data);
+                    this.setupEventHandlers();
                     return;
                 }
 
@@ -333,9 +341,14 @@
         }
 
         showEmptyState() {
+            const depthText = this.currentDepth === 1 ? '1-hop' : `${this.currentDepth}-hop`;
             this.container.innerHTML = `
                 <div class="d-flex align-items-center justify-content-center h-100">
-                    <p class="text-muted mb-0">No relationships found for this depth level.</p>
+                    <div class="text-center">
+                        <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mb-0 mt-2">No relationships found at ${depthText} depth.</p>
+                        <small class="text-muted">Try selecting a different depth or add relationships using the "Add Relationship" button.</small>
+                    </div>
                 </div>
             `;
         }
