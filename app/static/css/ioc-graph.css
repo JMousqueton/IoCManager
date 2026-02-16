@@ -123,6 +123,12 @@
     color: var(--bs-body-color);
 }
 
+/* Graph legend */
+.graph-legend {
+    background: var(--bs-light-bg-subtle);
+    border: 1px solid var(--bs-border-color);
+}
+
 /* Dark mode styles */
 [data-bs-theme="dark"] #ioc-graph-container {
     background: #1a1a1a !important;
@@ -132,6 +138,13 @@
 [data-bs-theme="dark"] .graph-controls {
     background: #2d2d2d;
     border-color: #404040;
+}
+
+[data-bs-theme="dark"] .graph-legend,
+[data-bs-theme="dark"] .bg-light {
+    background: #2d2d2d !important;
+    border-color: #404040 !important;
+    color: var(--bs-body-color);
 }
 
 [data-bs-theme="dark"] .nav-tabs {
