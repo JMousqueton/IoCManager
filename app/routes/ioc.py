@@ -142,6 +142,85 @@ def detail(id):
     return render_template('ioc/detail.html', ioc=ioc, now=datetime.utcnow, root_comments=root_comments)
 
 
+@ioc_bp.route('/<int:id>/graph-data')
+@login_required
+def graph_data(id):
+    """Get graph data for IOC relationships visualization"""
+    ioc = IOC.query.get_or_404(id)
+
+    # Get depth parameter (default 1, max 3)
+    depth = request.args.get('depth', 1, type=int)
+    depth = min(max(depth, 1), 3)  # Clamp to 1-3
+
+    # Build graph using BFS
+    nodes = {}  # {ioc_id: node_data}
+    edges = []
+    visited = set()
+    queue = [(ioc, 0)]  # (ioc_object, current_depth)
+
+    while queue:
+        current_ioc, current_depth = queue.pop(0)
+
+        # Skip if already visited or beyond max depth
+        if current_ioc.id in visited or current_depth > depth:
+            continue
+
+        visited.add(current_ioc.id)
+
+        # Add node
+        nodes[current_ioc.id] = {
+            'id': str(current_ioc.id),
+            'label': current_ioc.value[:50] + ('...' if len(current_ioc.value) > 50 else ''),
+            'type': current_ioc.ioc_type.name,
+            'severity': current_ioc.severity,
+            'is_active': current_ioc.is_active,
+            'url': url_for('ioc.detail', id=current_ioc.id),
+            'is_center': current_ioc.id == id
+        }
+
+        # Process relationships only if not at max depth
+        if current_depth < depth:
+            # Outgoing relationships
+            for rel in current_ioc.outgoing_relationships:
+                # Add edge
+                edges.append({
+                    'id': f'e{rel.id}',
+                    'source': str(rel.source_ioc_id),
+                    'target': str(rel.target_ioc_id),
+                    'label': rel.get_relationship_label(),
+                    'type': rel.relationship_type,
+                    'notes': rel.notes or '',
+                    'bidirectional': rel.is_bidirectional()
+                })
+                # Add target IOC to queue
+                if rel.target_ioc_id not in visited:
+                    queue.append((rel.target_ioc, current_depth + 1))
+
+            # Incoming relationships
+            for rel in current_ioc.incoming_relationships:
+                # Add edge (check if not already added for bidirectional)
+                edge_id = f'e{rel.id}'
+                if not any(e['id'] == edge_id for e in edges):
+                    edges.append({
+                        'id': edge_id,
+                        'source': str(rel.source_ioc_id),
+                        'target': str(rel.target_ioc_id),
+                        'label': rel.get_reverse_label(),
+                        'type': rel.relationship_type,
+                        'notes': rel.notes or '',
+                        'bidirectional': rel.is_bidirectional()
+                    })
+                # Add source IOC to queue
+                if rel.source_ioc_id not in visited:
+                    queue.append((rel.source_ioc, current_depth + 1))
+
+    # Return in Cytoscape.js format
+    return jsonify({
+        'nodes': [{'data': node} for node in nodes.values()],
+        'edges': [{'data': edge} for edge in edges]
+    })
+
+
 @ioc_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(id):

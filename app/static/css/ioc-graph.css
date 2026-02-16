@@ -1,0 +1,244 @@
+/**
+ * IOC Graph Visualization Styles
+ */
+
+/* Graph container */
+#ioc-graph-container {
+    background: var(--bs-card-bg, #ffffff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.375rem;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Graph controls */
+.graph-controls {
+    background: var(--bs-card-bg, #ffffff);
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.graph-controls label {
+    margin-bottom: 0;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--bs-body-color);
+}
+
+.graph-controls select {
+    min-width: 140px;
+}
+
+.graph-controls .btn-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Fullscreen mode */
+#ioc-graph-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0;
+    margin: 0;
+}
+
+#ioc-graph-container.fullscreen::before {
+    content: 'Press ESC to exit fullscreen';
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    z-index: 10000;
+    animation: fadeOut 3s forwards;
+}
+
+@keyframes fadeOut {
+    0%, 70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Tab styling */
+.nav-tabs {
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--bs-secondary-color);
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: var(--bs-primary);
+    color: var(--bs-primary);
+}
+
+.nav-tabs .nav-link.active {
+    border-bottom-color: var(--bs-primary);
+    color: var(--bs-primary);
+    font-weight: 500;
+    background: transparent;
+}
+
+.tab-content {
+    min-height: 200px;
+}
+
+/* Loading and empty states */
+#ioc-graph-container .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Graph control buttons */
+.graph-controls .btn-outline-secondary {
+    border-color: var(--bs-border-color);
+}
+
+.graph-controls .btn-outline-secondary:hover {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+/* Dark mode styles */
+[data-bs-theme="dark"] #ioc-graph-container {
+    background: #1a1a1a !important;
+    border-color: #404040;
+}
+
+[data-bs-theme="dark"] .graph-controls {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+[data-bs-theme="dark"] .nav-tabs {
+    border-bottom-color: #404040;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link {
+    color: #a8a8a8;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link:hover {
+    color: #6ea8fe;
+    border-bottom-color: #6ea8fe;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+    color: #6ea8fe;
+    border-bottom-color: #6ea8fe;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+    #ioc-graph-container {
+        height: 400px !important;
+    }
+
+    .graph-controls {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+
+    .graph-controls > div,
+    .graph-controls > label,
+    .graph-controls > select {
+        width: 100%;
+    }
+
+    .graph-controls .ms-auto {
+        margin-left: 0 !important;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .graph-controls .btn-group {
+        width: 100%;
+    }
+
+    .graph-controls .btn-group .btn {
+        flex: 1;
+    }
+
+    .nav-tabs .nav-link {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* Tablet responsive */
+@media (min-width: 768px) and (max-width: 991px) {
+    #ioc-graph-container {
+        height: 500px !important;
+    }
+
+    .graph-controls {
+        font-size: 0.875rem;
+    }
+
+    .graph-controls select {
+        min-width: 120px;
+    }
+}
+
+/* Accessibility improvements */
+.graph-controls button:focus,
+.graph-controls select:focus {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+/* Prevent text selection during graph interaction */
+#ioc-graph-container {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Smooth transitions */
+.nav-link,
+.graph-controls .btn,
+#ioc-graph-container {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Print styles */
+@media print {
+    #ioc-graph-container {
+        height: auto !important;
+        page-break-inside: avoid;
+    }
+
+    .graph-controls {
+        display: none;
+    }
+
+    .nav-tabs {
+        display: none;
+    }
+}

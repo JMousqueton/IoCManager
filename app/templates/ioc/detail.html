@@ -149,6 +149,9 @@
     display: block;
 }
 </style>
+
+<!-- IOC Graph CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ioc-graph.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -1581,85 +1584,146 @@
                 </button>
                 {% endif %}
             </div>
-            <div class="card-body">
+
+            <!-- Tabs -->
+            <div class="card-body p-0">
                 {% set outgoing = ioc.outgoing_relationships %}
                 {% set incoming = ioc.incoming_relationships %}
 
-                {% if outgoing or incoming %}
-                    <!-- Outgoing relationships (this IOC -> other IOCs) -->
-                    {% if outgoing %}
-                    <h6 class="text-muted mb-3"><i class="bi bi-arrow-right"></i> Outgoing Relationships</h6>
-                    <div class="list-group mb-4">
-                        {% for rel in outgoing %}
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <div class="mb-2">
-                                        <i class="{{ rel.get_relationship_icon() }}"></i>
-                                        <strong>{{ rel.get_relationship_label() }}</strong>
-                                    </div>
-                                    <div>
-                                        <a href="{{ url_for('ioc.detail', id=rel.target_ioc.id) }}" class="text-decoration-none">
-                                            <span class="badge bg-{{ rel.target_ioc.severity|severity_badge }}">{{ rel.target_ioc.ioc_type.name }}</span>
-                                            {{ rel.target_ioc.value[:80] }}{% if rel.target_ioc.value|length > 80 %}...{% endif %}
-                                        </a>
-                                    </div>
-                                    {% if rel.notes %}
-                                    <small class="text-muted">{{ rel.notes }}</small>
-                                    {% endif %}
-                                </div>
-                                {% if not current_user.is_viewer() and (current_user.is_admin() or rel.created_by == current_user.id) %}
-                                <form method="POST" action="{{ url_for('relationship.delete', id=rel.id) }}" class="ms-2">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this relationship?')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
+                <ul class="nav nav-tabs px-3 pt-3" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="graph-tab" data-bs-toggle="tab" data-bs-target="#graph-view" type="button" role="tab" aria-controls="graph-view" aria-selected="true">
+                            <i class="bi bi-diagram-3"></i> Graph View
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-view" type="button" role="tab" aria-controls="list-view" aria-selected="false">
+                            <i class="bi bi-list-ul"></i> List View
+                        </button>
+                    </li>
+                </ul>
 
-                    <!-- Incoming relationships (other IOCs -> this IOC) -->
-                    {% if incoming %}
-                    <h6 class="text-muted mb-3"><i class="bi bi-arrow-left"></i> Incoming Relationships</h6>
-                    <div class="list-group">
-                        {% for rel in incoming %}
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <div class="mb-2">
-                                        <i class="{{ rel.get_relationship_icon() }}"></i>
-                                        <strong>{{ rel.get_reverse_label()|title }}</strong>
-                                    </div>
-                                    <div>
-                                        <a href="{{ url_for('ioc.detail', id=rel.source_ioc.id) }}" class="text-decoration-none">
-                                            <span class="badge bg-{{ rel.source_ioc.severity|severity_badge }}">{{ rel.source_ioc.ioc_type.name }}</span>
-                                            {{ rel.source_ioc.value[:80] }}{% if rel.source_ioc.value|length > 80 %}...{% endif %}
-                                        </a>
-                                    </div>
-                                    {% if rel.notes %}
-                                    <small class="text-muted">{{ rel.notes }}</small>
-                                    {% endif %}
-                                </div>
-                                {% if not current_user.is_viewer() and (current_user.is_admin() or rel.created_by == current_user.id) %}
-                                <form method="POST" action="{{ url_for('relationship.delete', id=rel.id) }}" class="ms-2">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this relationship?')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {% endif %}
+                <div class="tab-content">
+                    <!-- Graph View Tab -->
+                    <div class="tab-pane fade show active p-3" id="graph-view" role="tabpanel" aria-labelledby="graph-tab">
+                        {% if outgoing or incoming %}
+                        <div class="graph-controls mb-3">
+                            <label for="graph-depth" class="me-2">Depth:</label>
+                            <select id="graph-depth" class="form-select form-select-sm" style="width: auto;">
+                                <option value="1" selected>1-hop (direct)</option>
+                                <option value="2">2-hop</option>
+                                <option value="3">3-hop</option>
+                            </select>
+
+                            <label for="graph-layout" class="me-2 ms-3">Layout:</label>
+                            <select id="graph-layout" class="form-select form-select-sm" style="width: auto;">
+                                <option value="cose" selected>Force-directed</option>
+                                <option value="circle">Circle</option>
+                                <option value="grid">Grid</option>
+                                <option value="breadthfirst">Hierarchical</option>
+                            </select>
+
+                            <div class="ms-auto">
+                                <button id="graph-fit" class="btn btn-sm btn-outline-secondary" title="Fit to view">
+                                    <i class="bi bi-fullscreen"></i>
+                                </button>
+                                <button id="graph-fullscreen" class="btn btn-sm btn-outline-secondary" title="Fullscreen">
+                                    <i class="bi bi-arrows-fullscreen"></i>
+                                </button>
                             </div>
                         </div>
-                        {% endfor %}
+
+                        <div id="ioc-graph-container" data-ioc-id="{{ ioc.id }}" style="width: 100%; height: 600px;">
+                            <div class="d-flex align-items-center justify-content-center h-100">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading graph...</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">No relationships defined. Click "Add Relationship" to link this IOC with related indicators.</p>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                {% else %}
-                    <p class="text-muted mb-0">No relationships defined. Click "Add Relationship" to link this IOC with related indicators.</p>
-                {% endif %}
+
+                    <!-- List View Tab -->
+                    <div class="tab-pane fade p-3" id="list-view" role="tabpanel" aria-labelledby="list-tab">
+                        {% if outgoing or incoming %}
+                            <!-- Outgoing relationships (this IOC -> other IOCs) -->
+                            {% if outgoing %}
+                            <h6 class="text-muted mb-3"><i class="bi bi-arrow-right"></i> Outgoing Relationships</h6>
+                            <div class="list-group mb-4">
+                                {% for rel in outgoing %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="mb-2">
+                                                <i class="{{ rel.get_relationship_icon() }}"></i>
+                                                <strong>{{ rel.get_relationship_label() }}</strong>
+                                            </div>
+                                            <div>
+                                                <a href="{{ url_for('ioc.detail', id=rel.target_ioc.id) }}" class="text-decoration-none">
+                                                    <span class="badge bg-{{ rel.target_ioc.severity|severity_badge }}">{{ rel.target_ioc.ioc_type.name }}</span>
+                                                    {{ rel.target_ioc.value[:80] }}{% if rel.target_ioc.value|length > 80 %}...{% endif %}
+                                                </a>
+                                            </div>
+                                            {% if rel.notes %}
+                                            <small class="text-muted">{{ rel.notes }}</small>
+                                            {% endif %}
+                                        </div>
+                                        {% if not current_user.is_viewer() and (current_user.is_admin() or rel.created_by == current_user.id) %}
+                                        <form method="POST" action="{{ url_for('relationship.delete', id=rel.id) }}" class="ms-2">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this relationship?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Incoming relationships (other IOCs -> this IOC) -->
+                            {% if incoming %}
+                            <h6 class="text-muted mb-3"><i class="bi bi-arrow-left"></i> Incoming Relationships</h6>
+                            <div class="list-group">
+                                {% for rel in incoming %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="mb-2">
+                                                <i class="{{ rel.get_relationship_icon() }}"></i>
+                                                <strong>{{ rel.get_reverse_label()|title }}</strong>
+                                            </div>
+                                            <div>
+                                                <a href="{{ url_for('ioc.detail', id=rel.source_ioc.id) }}" class="text-decoration-none">
+                                                    <span class="badge bg-{{ rel.source_ioc.severity|severity_badge }}">{{ rel.source_ioc.ioc_type.name }}</span>
+                                                    {{ rel.source_ioc.value[:80] }}{% if rel.source_ioc.value|length > 80 %}...{% endif %}
+                                                </a>
+                                            </div>
+                                            {% if rel.notes %}
+                                            <small class="text-muted">{{ rel.notes }}</small>
+                                            {% endif %}
+                                        </div>
+                                        {% if not current_user.is_viewer() and (current_user.is_admin() or rel.created_by == current_user.id) %}
+                                        <form method="POST" action="{{ url_for('relationship.delete', id=rel.id) }}" class="ms-2">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this relationship?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-muted mb-0">No relationships defined. Click "Add Relationship" to link this IOC with related indicators.</p>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2566,4 +2630,7 @@ function showCertDetails(commonName, issuer, notBefore, notAfter, serialNumber) 
     modal.show();
 }
 </script>
+
+<!-- IOC Graph JavaScript -->
+<script src="{{ url_for('static', filename='js/ioc-graph.js') }}"></script>
 {% endblock %}
