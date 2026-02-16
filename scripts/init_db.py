@@ -34,7 +34,7 @@ load_dotenv()
 # Create Flask app context
 from app import create_app, db
 from app.models import (
-    User, IOC, IOCType, Tag, IOCTag,
+    User, IOC, IOCType, Tag, IOCTag, OperatingSystem,
     VirusTotalCache, ASLookupCache, URLScanCache,
     DomainEnrichmentCache, URLEnrichmentCache,
     AuditLog, Session
@@ -63,6 +63,7 @@ def create_all_tables():
         print("  - IOC Types")
         print("  - IOCs")
         print("  - Tags")
+        print("  - Operating Systems")
         print("  - Cache tables (VirusTotal, URLScan, Domain Enrichment, URL Enrichment, AS Lookup)")
         print("  - Audit Logs")
         print("  - Sessions")
@@ -271,6 +272,40 @@ def create_default_tags():
         print(f"\n✓ Created {created_count} tags")
 
 
+def create_operating_systems():
+    """Create default operating systems for hash IOCs"""
+    print("\nCreating operating systems...")
+
+    operating_systems = [
+        {'name': 'Exe64', 'icon': 'fa-brands fa-windows', 'description': 'Windows 64-bit executable'},
+        {'name': 'Exe32', 'icon': 'fa-brands fa-windows', 'description': 'Windows 32-bit executable'},
+        {'name': 'ELF', 'icon': 'fa-brands fa-linux', 'description': 'Linux ELF binary'},
+        {'name': 'Mach-O', 'icon': 'fa-brands fa-apple', 'description': 'macOS Mach-O binary'},
+        {'name': 'APK', 'icon': 'fa-brands fa-android', 'description': 'Android APK package'},
+        {'name': 'DMG', 'icon': 'fa-brands fa-apple', 'description': 'macOS Disk Image'},
+        {'name': 'JAR', 'icon': 'fa-brands fa-java', 'description': 'Java Archive'},
+        {'name': 'DLL', 'icon': 'fa-brands fa-windows', 'description': 'Windows Dynamic Link Library'},
+        {'name': 'Script', 'icon': 'fa-solid fa-file-code', 'description': 'Script file (Python, Shell, PowerShell, etc.)'},
+        {'name': 'Document', 'icon': 'fa-solid fa-file-pdf', 'description': 'Document (PDF, Office, etc.)'},
+        {'name': 'Other', 'icon': 'fa-solid fa-question', 'description': 'Other or unknown file type'}
+    ]
+
+    with app.app_context():
+        created_count = 0
+        for os_data in operating_systems:
+            existing = OperatingSystem.query.filter_by(name=os_data['name']).first()
+            if not existing:
+                os_entry = OperatingSystem(**os_data)
+                db.session.add(os_entry)
+                created_count += 1
+                print(f"  ✓ Created operating system: {os_data['name']}")
+            else:
+                print(f"  - Operating system already exists: {os_data['name']}")
+
+        db.session.commit()
+        print(f"\n✓ Created {created_count} operating systems")
+
+
 def create_admin_user_interactive():
     """Create admin user with interactive prompts"""
     print("\n" + "=" * 60)
@@ -473,12 +508,14 @@ def show_database_info():
         ioc_count = IOC.query.count()
         tag_count = Tag.query.count()
         ioc_type_count = IOCType.query.count()
+        os_count = OperatingSystem.query.count()
 
         print(f"\nRecords:")
         print(f"  Users: {user_count}")
         print(f"  IOC Types: {ioc_type_count}")
         print(f"  IOCs: {ioc_count}")
         print(f"  Tags: {tag_count}")
+        print(f"  Operating Systems: {os_count}")
 
         # List users
         if user_count > 0:
@@ -521,6 +558,7 @@ def main():
         # Create default data
         create_ioc_types()
         create_default_tags()
+        create_operating_systems()
 
         # Create admin user
         if not args.skip_admin:

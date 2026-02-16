@@ -214,7 +214,7 @@ run_migrations() {
         # Run each migration script
         for migration in scripts/migrate*.py; do
             log "Running migration: $(basename $migration)"
-            if python3 "$migration"; then
+            if PYTHONPATH=. python3 "$migration"; then
                 success "Migration completed: $(basename $migration)"
             else
                 error "Migration failed: $(basename $migration)"

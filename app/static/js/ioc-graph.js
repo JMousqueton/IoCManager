@@ -340,6 +340,7 @@
         }
 
         toggleFullscreen() {
+            const isEnteringFullscreen = !this.container.classList.contains('fullscreen');
             this.container.classList.toggle('fullscreen');
 
             // Give Cytoscape a moment to adjust to new size
@@ -356,10 +357,26 @@
                 const icon = btn.querySelector('i');
                 if (this.container.classList.contains('fullscreen')) {
                     icon.className = 'bi bi-fullscreen-exit';
-                    btn.title = 'Exit fullscreen';
+                    btn.title = 'Exit fullscreen (ESC)';
                 } else {
                     icon.className = 'bi bi-arrows-fullscreen';
                     btn.title = 'Fullscreen';
+                }
+            }
+
+            // Setup ESC key handler when entering fullscreen
+            if (isEnteringFullscreen) {
+                this.escHandler = (e) => {
+                    if (e.key === 'Escape' && this.container.classList.contains('fullscreen')) {
+                        this.toggleFullscreen();
+                    }
+                };
+                document.addEventListener('keydown', this.escHandler);
+            } else {
+                // Remove ESC key handler when exiting fullscreen
+                if (this.escHandler) {
+                    document.removeEventListener('keydown', this.escHandler);
+                    this.escHandler = null;
                 }
             }
         }
