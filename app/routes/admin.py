@@ -217,6 +217,122 @@ def delete_tag(id):
     return redirect(url_for('admin.tags'))
 
 
+@admin_bp.route('/operating-systems')
+@login_required
+@admin_required
+def operating_systems():
+    """Operating Systems management page"""
+    from app.models.operating_system import OperatingSystem
+
+    operating_systems_list = OperatingSystem.query.order_by(OperatingSystem.name).all()
+
+    return render_template('admin/index.html',
+                          active_tab='operating_systems',
+                          operating_systems=operating_systems_list)
+
+
+@admin_bp.route('/operating-systems/create', methods=['POST'])
+@login_required
+@admin_required
+def create_operating_system():
+    """Create a new operating system"""
+    from app.models.operating_system import OperatingSystem
+
+    name = request.form.get('name', '').strip()
+    icon = request.form.get('icon', '').strip()
+    description = request.form.get('description', '').strip()
+
+    if not name:
+        flash('Operating system name is required.', 'danger')
+        return redirect(url_for('admin.operating_systems'))
+
+    # Check if OS already exists
+    existing = OperatingSystem.query.filter_by(name=name).first()
+    if existing:
+        flash(f'Operating system "{name}" already exists.', 'warning')
+        return redirect(url_for('admin.operating_systems'))
+
+    try:
+        new_os = OperatingSystem(name=name, icon=icon, description=description)
+        db.session.add(new_os)
+        db.session.commit()
+        flash(f'Operating system "{name}" created successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating operating system: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.operating_systems'))
+
+
+@admin_bp.route('/operating-systems/<int:id>/edit', methods=['POST'])
+@login_required
+@admin_required
+def edit_operating_system(id):
+    """Edit an existing operating system"""
+    from app.models.operating_system import OperatingSystem
+
+    os_entry = OperatingSystem.query.get_or_404(id)
+
+    name = request.form.get('name', '').strip()
+    icon = request.form.get('icon', '').strip()
+    description = request.form.get('description', '').strip()
+
+    if not name:
+        flash('Operating system name is required.', 'danger')
+        return redirect(url_for('admin.operating_systems'))
+
+    # Check if name is already used by another OS
+    existing = OperatingSystem.query.filter(
+        OperatingSystem.name == name,
+        OperatingSystem.id != id
+    ).first()
+
+    if existing:
+        flash(f'Operating system "{name}" already exists.', 'warning')
+        return redirect(url_for('admin.operating_systems'))
+
+    try:
+        os_entry.name = name
+        os_entry.icon = icon
+        os_entry.description = description
+        db.session.commit()
+        flash(f'Operating system "{name}" updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating operating system: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.operating_systems'))
+
+
+@admin_bp.route('/operating-systems/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_operating_system(id):
+    """Delete an operating system"""
+    from app.models.operating_system import OperatingSystem
+
+    os_entry = OperatingSystem.query.get_or_404(id)
+    os_name = os_entry.name
+
+    try:
+        # Check how many IOCs use this OS
+        ioc_count = os_entry.iocs.count()
+
+        # Delete the OS (will set operating_system_id to NULL in IOCs)
+        db.session.delete(os_entry)
+        db.session.commit()
+
+        if ioc_count > 0:
+            flash(f'Operating system "{os_name}" deleted successfully. {ioc_count} IOC(s) were using this OS.', 'success')
+        else:
+            flash(f'Operating system "{os_name}" deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting operating system: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.operating_systems'))
+
+
 @admin_bp.route('/api-keys')
 @login_required
 @admin_required

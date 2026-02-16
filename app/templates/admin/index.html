@@ -46,6 +46,13 @@
         </a>
     </li>
     <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'operating_systems' %}active{% endif %}"
+           href="{{ url_for('admin.operating_systems') }}"
+           role="tab">
+            <i class="fa-solid fa-microchip"></i> Operating Systems
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
         <a class="nav-link {% if active_tab == 'api-keys' %}active{% endif %}"
            href="{{ url_for('admin.api_keys') }}"
            role="tab">
@@ -195,6 +202,138 @@
                 {% else %}
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> No tags found. Create your first tag using the "Add Tag" button above.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Operating Systems Tab -->
+    {% if active_tab == 'operating_systems' %}
+    <div class="tab-pane fade show active" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-microchip"></i> Operating Systems</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createOSModal">
+                    <i class="bi bi-plus-circle"></i> Add Operating System
+                </button>
+            </div>
+            <div class="card-body">
+                {% if operating_systems %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">Icon</th>
+                                <th style="width: 20%;">Name</th>
+                                <th style="width: 55%;">Description</th>
+                                <th style="width: 15%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for os in operating_systems %}
+                            <tr>
+                                <td>
+                                    {% if os.icon %}
+                                    <i class="{{ os.icon }} fa-2x"></i>
+                                    {% else %}
+                                    <i class="fa-solid fa-question fa-2x text-muted"></i>
+                                    {% endif %}
+                                </td>
+                                <td><strong>{{ os.name }}</strong></td>
+                                <td>{{ os.description or '-' }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editOSModal{{ os.id }}"
+                                            title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteOSModal{{ os.id }}"
+                                            title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Edit OS Modal -->
+                            <div class="modal fade" id="editOSModal{{ os.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.edit_operating_system', id=os.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Edit Operating System: {{ os.name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control" name="name"
+                                                           value="{{ os.name }}" required
+                                                           placeholder="e.g., Exe64, ELF">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Font Awesome Icon</label>
+                                                    <input type="text" class="form-control font-monospace" name="icon"
+                                                           value="{{ os.icon or '' }}"
+                                                           placeholder="e.g., fa-brands fa-windows">
+                                                    <small class="form-text text-muted">
+                                                        Browse icons at: <a href="https://fontawesome.com/search?o=r&m=free" target="_blank">Font Awesome</a>
+                                                    </small>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Description</label>
+                                                    <textarea class="form-control" name="description"
+                                                              rows="3">{{ os.description or '' }}</textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Delete OS Modal -->
+                            <div class="modal fade" id="deleteOSModal{{ os.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.delete_operating_system', id=os.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">Delete Operating System</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to delete the operating system <strong>{{ os.name }}</strong>?</p>
+                                                <div class="alert alert-warning">
+                                                    <i class="bi bi-exclamation-triangle"></i>
+                                                    This will remove the operating system association from all related IOCs.
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-danger">
+                                                    Delete Operating System
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No operating systems found. Create your first operating system using the "Add Operating System" button above.
                 </div>
                 {% endif %}
             </div>
@@ -677,6 +816,45 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Create Tag</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Operating System Modal -->
+<div class="modal fade" id="createOSModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.create_operating_system') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Operating System</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required
+                               placeholder="e.g., Exe64, ELF, Mach-O">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Font Awesome Icon</label>
+                        <input type="text" class="form-control font-monospace" name="icon"
+                               placeholder="e.g., fa-brands fa-windows, fa-brands fa-linux">
+                        <small class="form-text text-muted">
+                            Browse icons at: <a href="https://fontawesome.com/search?o=r&m=free" target="_blank">Font Awesome</a>
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"
+                                  placeholder="Brief description of this operating system type"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Operating System</button>
                 </div>
             </form>
         </div>

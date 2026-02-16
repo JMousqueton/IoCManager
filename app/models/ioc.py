@@ -78,8 +78,12 @@ class IOC(db.Model):
     # Review flag - allows any user to edit when set to True
     needs_review = db.Column(db.Boolean, default=False, nullable=False, index=True)
 
+    # Operating System (for hash-type IOCs)
+    operating_system_id = db.Column(db.Integer, db.ForeignKey('operating_systems.id'), nullable=True)
+
     # Relationships
     tags = db.relationship('Tag', secondary='ioc_tags', backref=db.backref('iocs', lazy='dynamic'))
+    operating_system = db.relationship('OperatingSystem', back_populates='iocs')
 
     # Constraints
     __table_args__ = (

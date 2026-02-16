@@ -95,6 +95,17 @@
                         <div class="form-text">Separate tags with commas</div>
                     </div>
 
+                    <div class="mb-3" id="operating-system-field" style="display: none;">
+                        {{ form.operating_system_id.label(class="form-label") }}
+                        {{ form.operating_system_id(class="form-select" + (" is-invalid" if form.operating_system_id.errors else "")) }}
+                        {% if form.operating_system_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.operating_system_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Select the operating system for this hash</div>
+                    </div>
+
                     <div class="mb-3">
                         {{ form.notes.label(class="form-label") }}
                         {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows=3) }}
@@ -180,4 +191,31 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/tag-autocomplete.js') }}"></script>
+<script>
+// Show/hide operating system field based on IOC type
+(function() {
+    const iocTypeField = document.getElementById('ioc_type_id');
+    const osField = document.getElementById('operating-system-field');
+
+    // Hash type names (MD5, SHA1, SHA256, SHA512)
+    const hashTypes = ['MD5', 'SHA1', 'SHA256', 'SHA512', 'SSDEEP'];
+
+    function toggleOSField() {
+        const selectedOption = iocTypeField.options[iocTypeField.selectedIndex];
+        const typeName = selectedOption.text;
+
+        if (hashTypes.includes(typeName)) {
+            osField.style.display = 'block';
+        } else {
+            osField.style.display = 'none';
+        }
+    }
+
+    // Toggle on page load
+    toggleOSField();
+
+    // Toggle on type change
+    iocTypeField.addEventListener('change', toggleOSField);
+})();
+</script>
 {% endblock %}

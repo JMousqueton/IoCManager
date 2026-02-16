@@ -40,6 +40,7 @@ class IOCForm(FlaskForm):
     tags = StringField('Tags (comma-separated)', validators=[
         Length(max=500, message='Tags field is too long')
     ])
+    operating_system_id = SelectField('Operating System', coerce=int, validators=[Optional()])
     notes = TextAreaField('Notes', validators=[
         Length(max=5000, message='Notes are too long')
     ])

@@ -212,6 +212,22 @@
                     </div>
                 </div>
 
+                <!-- Operating System (for hash IOCs) -->
+                {% if ioc.operating_system %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Operating System:</strong></div>
+                    <div class="col-md-9">
+                        {% if ioc.operating_system.icon %}
+                        <i class="{{ ioc.operating_system.icon }} fa-lg me-2"></i>
+                        {% endif %}
+                        <span class="badge bg-info">{{ ioc.operating_system.name }}</span>
+                        {% if ioc.operating_system.description %}
+                        <br><small class="text-muted">{{ ioc.operating_system.description }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Favicon SHA256 Hash (for URL IOCs) -->
                 {% if ioc.ioc_type.name == 'URL' and enrichment and enrichment.url_headers and enrichment.url_headers.favicon_sha256 %}
                 <div class="row mb-3">

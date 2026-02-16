@@ -83,6 +83,11 @@ def create():
     types = IOCType.query.all()
     form.ioc_type_id.choices = [(t.id, t.name) for t in types]
 
+    # Populate Operating System choices
+    from app.models.operating_system import OperatingSystem
+    operating_systems = OperatingSystem.query.order_by(OperatingSystem.name).all()
+    form.operating_system_id.choices = [(0, '-- Select Operating System --')] + [(os.id, os.name) for os in operating_systems]
+
     if form.validate_on_submit():
         ioc = IOC(
             value=form.value.data,
@@ -95,7 +100,8 @@ def create():
             notes=form.notes.data,
             is_active=form.is_active.data,
             false_positive=form.false_positive.data,
-            created_by=current_user.id
+            created_by=current_user.id,
+            operating_system_id=form.operating_system_id.data if form.operating_system_id.data else None
         )
 
         # Handle expiration
@@ -239,6 +245,11 @@ def edit(id):
     types = IOCType.query.all()
     form.ioc_type_id.choices = [(t.id, t.name) for t in types]
 
+    # Populate Operating System choices
+    from app.models.operating_system import OperatingSystem
+    operating_systems = OperatingSystem.query.order_by(OperatingSystem.name).all()
+    form.operating_system_id.choices = [(0, '-- Select Operating System --')] + [(os.id, os.name) for os in operating_systems]
+
     if form.validate_on_submit():
         ioc.value = form.value.data
         ioc.ioc_type_id = form.ioc_type_id.data
@@ -251,6 +262,7 @@ def edit(id):
         ioc.is_active = form.is_active.data
         ioc.false_positive = form.false_positive.data
         ioc.updated_by = current_user.id
+        ioc.operating_system_id = form.operating_system_id.data if form.operating_system_id.data else None
 
         # Handle expiration
         from flask import request
@@ -299,6 +311,7 @@ def edit(id):
     form.notes.data = ioc.notes
     form.is_active.data = ioc.is_active
     form.false_positive.data = ioc.false_positive
+    form.operating_system_id.data = ioc.operating_system_id if ioc.operating_system_id else 0
     form.tags.data = ', '.join([tag.name for tag in ioc.tags])
 
     # Populate expiration field (remaining days)
