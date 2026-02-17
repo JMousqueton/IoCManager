@@ -62,3 +62,10 @@ def serve_cached_file(filename):
 def about():
     """About page"""
     return render_template('main/about.html')
+
+
+@main_bp.route('/shared_ioc/<token>')
+def shared_ioc(token):
+    """Public shared view of an IOC using an unguessable token (no login required)"""
+    ioc = IOC.query.filter_by(share_token=token).first_or_404()
+    return render_template('ioc/shared.html', ioc=ioc)

@@ -1,5 +1,6 @@
 """IOC and IOCType models"""
 
+import uuid
 from datetime import datetime, timedelta
 from app import db
 
@@ -80,6 +81,9 @@ class IOC(db.Model):
 
     # Operating System (for hash-type IOCs)
     operating_system_id = db.Column(db.Integer, db.ForeignKey('operating_systems.id'), nullable=True)
+
+    # Unguessable token for public share links
+    share_token = db.Column(db.String(36), unique=True, nullable=True, index=True, default=lambda: str(uuid.uuid4()))
 
     # Lifecycle status: draft | review | active | archived
     status = db.Column(db.String(20), nullable=False, default='active', index=True)

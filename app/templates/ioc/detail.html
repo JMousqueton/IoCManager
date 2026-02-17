@@ -174,6 +174,11 @@
         {% endif %}
         {% endif %}
 
+        <!-- Share button -->
+        <button class="btn btn-outline-secondary" onclick="copyIocShareUrl()" id="shareBtn" title="Copy link to anonymized shared view">
+            <i class="bi bi-share"></i> Share
+        </button>
+
         <!-- Export STIX button -->
         <a href="{{ url_for('ioc_export.export_single_stix', id=ioc.id) }}" class="btn btn-success" title="Export as STIX 2.1 for TAXII sharing">
             <i class="bi bi-download"></i> Export STIX
@@ -2816,4 +2821,22 @@ function showCertDetails(commonName, issuer, notBefore, notAfter, serialNumber) 
 
 <!-- IOC Graph JavaScript -->
 <script src="{{ url_for('static', filename='js/ioc-graph.js') }}"></script>
+
+<script>
+function copyIocShareUrl() {
+    const shareUrl = '{{ url_for("main.shared_ioc", token=ioc.share_token, _external=True) }}';
+    navigator.clipboard.writeText(shareUrl).then(function() {
+        const btn = document.getElementById('shareBtn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-secondary');
+        setTimeout(function() {
+            btn.innerHTML = original;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+</script>
 {% endblock %}

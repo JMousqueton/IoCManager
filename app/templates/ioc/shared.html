@@ -1,0 +1,1057 @@
+{% extends "base.html" %}
+
+{% block title %}Shared IOC View - IOC Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+.markdown-body {
+    font-size: 14px;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+.markdown-body h1, .markdown-body h2, .markdown-body h3,
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+.markdown-body p { margin-bottom: 0.75rem; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.5rem; }
+.markdown-body code {
+    background-color: #f8f9fa;
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+.markdown-body pre code {
+    background-color: transparent;
+    padding: 0;
+}
+.shared-banner {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Shared View Banner -->
+    <div class="shared-banner">
+        <div>
+            <i class="bi bi-share"></i>
+            <strong>Shared View</strong>
+            <span class="ms-2 opacity-75">Read-only · Author and relationship details are hidden</span>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-light" onclick="copyShareUrl()" id="copyBtn" title="Copy share link">
+                <i class="bi bi-clipboard"></i> Copy Link
+            </button>
+            <a href="{{ url_for('ioc.detail', id=ioc.id) }}" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-arrow-up-right-square"></i> Full Details
+            </a>
+        </div>
+    </div>
+
+    <!-- Page Header -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h1>
+                <i class="bi bi-shield-check"></i>
+                IOC Details
+                <span class="badge bg-secondary ms-2" style="font-size:0.55em; vertical-align: middle;">SHARED</span>
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('ioc.list') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+
+            <!-- IOC Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">IOC Information</h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Type:</strong></div>
+                        <div class="col-md-9">
+                            <span class="badge bg-secondary">{{ ioc.ioc_type.name }}</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Value:</strong></div>
+                        <div class="col-md-9">
+                            <div class="d-flex align-items-start gap-2">
+                                <code class="bg-light p-2 d-block flex-grow-1">{{ ioc.value }}</code>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="navigator.clipboard.writeText('{{ ioc.value|replace("'", "\\'") }}')"
+                                        title="Copy value">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operating System (hash IOCs) -->
+                    {% if ioc.operating_system %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Operating System:</strong></div>
+                        <div class="col-md-9">
+                            {% if ioc.operating_system.icon %}
+                            <i class="{{ ioc.operating_system.icon }} fa-lg me-2"></i>
+                            {% endif %}
+                            <span class="badge bg-info">{{ ioc.operating_system.name }}</span>
+                            {% if ioc.operating_system.description %}
+                            <br><small class="text-muted">{{ ioc.operating_system.description }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Description:</strong></div>
+                        <div class="col-md-9 markdown-body">
+                            {% if ioc.description %}
+                                {{ ioc.description|markdown }}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Severity:</strong></div>
+                        <div class="col-md-9">
+                            <span class="badge bg-{{ ioc.severity|severity_badge }}">{{ ioc.severity }}</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Confidence:</strong></div>
+                        <div class="col-md-9">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: {{ ioc.confidence }}%;"
+                                     aria-valuenow="{{ ioc.confidence }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ ioc.confidence }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>TLP:</strong></div>
+                        <div class="col-md-9">
+                            <span class="badge bg-{{ ioc.tlp|tlp_badge }} text-dark">{{ ioc.tlp }}</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Source:</strong></div>
+                        <div class="col-md-9">{{ ioc.source or 'N/A' }}</div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Status:</strong></div>
+                        <div class="col-md-9">
+                            <span class="badge {{ ioc.status_badge_class }} me-2">{{ ioc.status_label }}</span>
+                            {% if ioc.false_positive %}
+                                <span class="badge bg-warning text-dark">False Positive</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Tags:</strong></div>
+                        <div class="col-md-9">
+                            {% if ioc.tags %}
+                                {% for tag in ioc.tags %}
+                                    <span class="badge" style="background-color: {{ tag.color }}; color: white;">{{ tag.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">No tags</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if ioc.notes %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Notes:</strong></div>
+                        <div class="col-md-9">
+                            <div class="bg-light p-3 rounded">{{ ioc.notes }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+
+        <!-- GeoIP Enrichment -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.ip %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-globe"></i> GeoIP Enrichment</h5>
+            </div>
+            <div class="card-body">
+                {% if enrichment.continent and enrichment.continent.name %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Continent:</strong></div>
+                    <div class="col-md-9">{{ enrichment.continent.name }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.country and enrichment.country.name %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Country:</strong></div>
+                    <div class="col-md-9">
+                        {{ enrichment.country.name }}
+                        {% if enrichment.country.iso_code %}
+                            <span class="badge bg-secondary">{{ enrichment.country.iso_code }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.subdivisions %}
+                    {% for subdivision in enrichment.subdivisions %}
+                        {% if subdivision.name %}
+                        <div class="row mb-3">
+                            <div class="col-md-3"><strong>State/Region:</strong></div>
+                            <div class="col-md-9">
+                                {{ subdivision.name }}
+                                {% if subdivision.iso_code %}
+                                    <span class="badge bg-secondary">{{ subdivision.iso_code }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
+                {% if enrichment.city and enrichment.city.name %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>City:</strong></div>
+                    <div class="col-md-9">{{ enrichment.city.name }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.location %}
+                    {% if enrichment.location.latitude and enrichment.location.longitude %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Coordinates:</strong></div>
+                        <div class="col-md-9">
+                            <code>{{ "%.4f"|format(enrichment.location.latitude) }}, {{ "%.4f"|format(enrichment.location.longitude) }}</code>
+                            <a href="https://www.google.com/maps?q={{ enrichment.location.latitude }},{{ enrichment.location.longitude }}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-secondary ms-2">
+                                <i class="bi bi-map"></i> View on Map
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if enrichment.location.time_zone %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Time Zone:</strong></div>
+                        <div class="col-md-9">{{ enrichment.location.time_zone }}</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                {% if enrichment.asn %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-hdd-network"></i> Network Information</h6>
+
+                {% if enrichment.asn.asn %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>ASN:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-primary">AS{{ enrichment.asn.asn }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.asn.asn_description %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Organization:</strong></div>
+                    <div class="col-md-9">{{ enrichment.asn.asn_description }}</div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.asn.network and enrichment.asn.network.cidr %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Network:</strong></div>
+                    <div class="col-md-9"><code>{{ enrichment.asn.network.cidr }}</code></div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {% if enrichment.source %}
+                <hr class="my-3">
+                <div class="row mb-0">
+                    <div class="col-md-3"><strong>Data Source:</strong></div>
+                    <div class="col-md-9"><small class="text-muted">{{ enrichment.source }}</small></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- VirusTotal Hash Enrichment -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.status == 'success' and enrichment.hash %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> VirusTotal Scan Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Detection:</strong></div>
+                    <div class="col-md-9">
+                        <h5>
+                            <span class="badge bg-{% if enrichment.stats.malicious >= 5 %}danger{% elif enrichment.stats.malicious > 0 or enrichment.stats.suspicious >= 3 %}warning{% else %}success{% endif %}">
+                                {{ enrichment.detection_rate }}
+                            </span>
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Classification:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if enrichment.threat_classification == 'Malicious' %}danger{% elif enrichment.threat_classification == 'Suspicious' %}warning{% elif enrichment.threat_classification == 'Clean' %}success{% else %}secondary{% endif %}">
+                            {{ enrichment.threat_classification }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Malicious:</strong></div>
+                    <div class="col-md-9"><span class="badge bg-danger">{{ enrichment.stats.malicious }}</span></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Suspicious:</strong></div>
+                    <div class="col-md-9"><span class="badge bg-warning text-dark">{{ enrichment.stats.suspicious }}</span></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Undetected:</strong></div>
+                    <div class="col-md-9"><span class="badge bg-success">{{ enrichment.stats.undetected }}</span></div>
+                </div>
+
+                {% if enrichment.file_info %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-file-earmark-text"></i> File Information</h6>
+                {% if enrichment.file_info.size %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>File Size:</strong></div>
+                    <div class="col-md-9">{{ (enrichment.file_info.size / 1024 / 1024)|round(2) }} MB <span class="text-muted">({{ '{:,}'.format(enrichment.file_info.size) }} bytes)</span></div>
+                </div>
+                {% endif %}
+                {% if enrichment.file_info.type %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>File Type:</strong></div>
+                    <div class="col-md-9">{{ enrichment.file_info.type }}</div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {% if enrichment.hash.sha256 or enrichment.hash.sha1 or enrichment.hash.md5 %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-fingerprint"></i> File Hashes</h6>
+                {% if enrichment.hash.sha256 %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>SHA256:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.hash.sha256 }}</code></div>
+                </div>
+                {% endif %}
+                {% if enrichment.hash.sha1 %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>SHA1:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.hash.sha1 }}</code></div>
+                </div>
+                {% endif %}
+                {% if enrichment.hash.md5 %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>MD5:</strong></div>
+                    <div class="col-md-9"><code class="small">{{ enrichment.hash.md5 }}</code></div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {% if enrichment.top_detections %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-bug"></i> Top Detections</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead><tr><th>AV Engine</th><th>Result</th></tr></thead>
+                        <tbody>
+                            {% for detection in enrichment.top_detections %}
+                            <tr>
+                                <td>{{ detection.engine }}</td>
+                                <td>
+                                    <span class="badge bg-{% if detection.category == 'malicious' %}danger{% else %}warning{% endif %}">{{ detection.result }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                {% if enrichment.mitre_attack and enrichment.mitre_attack.techniques %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-shield-exclamation"></i> MITRE ATT&CK Framework</h6>
+                {% set tactics_dict = {} %}
+                {% for technique in enrichment.mitre_attack.techniques %}
+                    {% set tactic = technique.tactic or 'Unknown' %}
+                    {% if tactic not in tactics_dict %}{% set _ = tactics_dict.update({tactic: []}) %}{% endif %}
+                    {% set _ = tactics_dict[tactic].append(technique) %}
+                {% endfor %}
+                <div class="row g-3">
+                    {% for tactic, techniques in tactics_dict.items() %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-danger h-100">
+                            <div class="card-header bg-danger text-white">
+                                <strong>{{ tactic }}</strong>
+                                <span class="badge bg-white text-danger float-end">{{ techniques|length }}</span>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="list-group list-group-flush">
+                                    {% for technique in techniques %}
+                                    <a href="https://attack.mitre.org/techniques/{{ technique.id.replace('.', '/') }}/"
+                                       target="_blank"
+                                       class="list-group-item list-group-item-action p-2 border-0 border-bottom">
+                                        <code class="text-danger fw-bold small">{{ technique.id }}</code>
+                                        <div class="small text-truncate">{{ technique.name }}</div>
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if enrichment.permalink %}
+                <hr class="my-3">
+                <a href="{{ enrichment.permalink }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-box-arrow-up-right"></i> View Full Report on VirusTotal
+                </a>
+                {% endif %}
+
+                <hr class="my-3">
+                <div class="row mb-0">
+                    <div class="col-md-3"><strong>Data Source:</strong></div>
+                    <div class="col-md-9">
+                        <small class="text-muted">VirusTotal API v3</small>
+                        {% if enrichment.cached %}<span class="badge bg-info text-dark ms-2">Cached</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- URL Enrichment (URLScan.io + VirusTotal) -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.status == 'success' and (enrichment.urlscan or enrichment.virustotal) %}
+
+        {% if enrichment.urlscan %}
+        {% set urlscan = enrichment.urlscan %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-search"></i> URLScan.io Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Verdict:</strong></div>
+                    <div class="col-md-9">
+                        <h5>
+                            <span class="badge bg-{% if urlscan.verdicts.malicious %}danger{% else %}success{% endif %}">
+                                {% if urlscan.verdicts.malicious %}Malicious{% else %}Clean{% endif %}
+                            </span>
+                        </h5>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Score:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if urlscan.verdicts.overall >= 50 %}danger{% elif urlscan.verdicts.overall > 0 %}warning{% else %}success{% endif %}">
+                            {{ urlscan.verdicts.overall }}
+                        </span>
+                    </div>
+                </div>
+                {% if urlscan.verdicts.categories %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Categories:</strong></div>
+                    <div class="col-md-9">
+                        {% for category in urlscan.verdicts.categories %}
+                        <span class="badge bg-warning text-dark">{{ category }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-link-45deg"></i> URL Details</h6>
+                {% if urlscan.domain %}<div class="row mb-2"><div class="col-md-3"><strong>Domain:</strong></div><div class="col-md-9"><code>{{ urlscan.domain }}</code></div></div>{% endif %}
+                {% if urlscan.ip %}<div class="row mb-2"><div class="col-md-3"><strong>IP Address:</strong></div><div class="col-md-9"><code>{{ urlscan.ip }}</code></div></div>{% endif %}
+                {% if urlscan.country %}<div class="row mb-2"><div class="col-md-3"><strong>Country:</strong></div><div class="col-md-9"><span class="badge bg-secondary">{{ urlscan.country }}</span></div></div>{% endif %}
+                {% if urlscan.server %}<div class="row mb-2"><div class="col-md-3"><strong>Server:</strong></div><div class="col-md-9"><code>{{ urlscan.server }}</code></div></div>{% endif %}
+                {% if urlscan.title %}<div class="row mb-2"><div class="col-md-3"><strong>Page Title:</strong></div><div class="col-md-9">{{ urlscan.title }}</div></div>{% endif %}
+                <hr class="my-3">
+                <div class="row mb-2">
+                    <div class="col-md-12">
+                        <a href="{{ urlscan.screenshot }}" target="_blank" class="btn btn-sm btn-outline-secondary me-2">
+                            <i class="bi bi-image"></i> View Screenshot
+                        </a>
+                        <a href="{{ urlscan.report_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right"></i> Full Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if enrichment.virustotal %}
+        {% set vt = enrichment.virustotal %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> VirusTotal URL Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Detection:</strong></div>
+                    <div class="col-md-9">
+                        <h5>
+                            <span class="badge bg-{% if vt.stats.malicious > 5 %}danger{% elif vt.stats.malicious > 0 %}warning{% else %}success{% endif %}">{{ vt.detection_rate }}</span>
+                        </h5>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Classification:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if vt.threat_classification == 'Malicious' %}danger{% elif vt.threat_classification == 'Suspicious' %}warning{% else %}success{% endif %}">{{ vt.threat_classification }}</span>
+                    </div>
+                </div>
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-bar-chart"></i> Detection Statistics</h6>
+                <div class="row mb-2"><div class="col-md-4"><strong>Malicious:</strong></div><div class="col-md-8"><span class="badge bg-danger">{{ vt.stats.malicious }}</span></div></div>
+                <div class="row mb-2"><div class="col-md-4"><strong>Suspicious:</strong></div><div class="col-md-8"><span class="badge bg-warning text-dark">{{ vt.stats.suspicious }}</span></div></div>
+                <div class="row mb-2"><div class="col-md-4"><strong>Harmless:</strong></div><div class="col-md-8"><span class="badge bg-success">{{ vt.stats.harmless }}</span></div></div>
+                <div class="row mb-2"><div class="col-md-4"><strong>Undetected:</strong></div><div class="col-md-8">{{ vt.stats.undetected }}</div></div>
+                {% if vt.top_detections %}
+                <hr class="my-3">
+                <h6 class="text-muted mb-3"><i class="bi bi-exclamation-triangle"></i> Top Detections</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light"><tr><th>Engine</th><th>Result</th></tr></thead>
+                        <tbody>
+                            {% for detection in vt.top_detections[:5] %}
+                            <tr>
+                                <td>{{ detection.engine }}</td>
+                                <td><span class="badge bg-{% if detection.category == 'malicious' %}danger{% else %}warning{% endif %}">{{ detection.result }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                <hr class="my-3">
+                <a href="{{ vt.permalink }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-box-arrow-up-right"></i> View Full VirusTotal Report
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if enrichment.url_headers %}
+        {% set url_data = enrichment.url_headers %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-server"></i> HTTP Header Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>HTTP Status:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if url_data.status_code >= 200 and url_data.status_code < 300 %}success{% elif url_data.status_code >= 300 and url_data.status_code < 400 %}info{% elif url_data.status_code >= 400 and url_data.status_code < 500 %}warning{% else %}danger{% endif %}">
+                            {{ url_data.status_code }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Server:</strong></div>
+                    <div class="col-md-9"><code>{{ url_data.server if url_data.server != 'Unknown' else 'Not disclosed' }}</code></div>
+                </div>
+                {% if url_data.content_type %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Content-Type:</strong></div>
+                    <div class="col-md-9"><code>{{ url_data.content_type }}</code></div>
+                </div>
+                {% endif %}
+                {% if url_data.redirect_url %}
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Redirects To:</strong></div>
+                    <div class="col-md-9"><code>{{ url_data.redirect_url }}</code></div>
+                </div>
+                {% endif %}
+                {% if url_data.technologies %}
+                <hr class="my-3">
+                <h6 class="text-primary mb-3"><i class="bi bi-code-square"></i> Detected Technologies</h6>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        {% for tech in url_data.technologies %}
+                        <span class="badge bg-primary me-1 mb-1">{{ tech }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if url_data.security_headers %}
+                <hr class="my-3">
+                <h6 class="text-primary mb-3"><i class="bi bi-shield-lock"></i> Security Headers</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light"><tr><th style="width: 40%;">Header</th><th>Status</th></tr></thead>
+                        <tbody>
+                            {% for header, value in url_data.security_headers.items() %}
+                            <tr>
+                                <td><code>{{ header }}</code></td>
+                                <td>
+                                    {% if value == 'Not Set' %}
+                                    <span class="badge bg-danger">Not Set</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Set</span>
+                                    <small class="text-muted ms-2">{{ value[:50] }}{% if value|length > 50 %}...{% endif %}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                {% if url_data.ssl_certificate and url_data.ssl_certificate.subject %}
+                <hr class="my-3">
+                <h6 class="text-primary mb-3"><i class="bi bi-lock"></i> SSL/TLS Certificate</h6>
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Subject:</strong></div>
+                    <div class="col-md-9"><code>{{ url_data.ssl_certificate.subject.get('commonName', 'N/A') }}</code></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Issuer:</strong></div>
+                    <div class="col-md-9"><code>{{ url_data.ssl_certificate.issuer.get('organizationName', url_data.ssl_certificate.issuer.get('commonName', 'N/A')) }}</code></div>
+                </div>
+                {% if url_data.ssl_certificate.not_before %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Valid From:</strong></div>
+                    <div class="col-md-9">{{ url_data.ssl_certificate.not_before }}</div>
+                </div>
+                {% endif %}
+                {% if url_data.ssl_certificate.not_after %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Valid Until:</strong></div>
+                    <div class="col-md-9">{{ url_data.ssl_certificate.not_after }}</div>
+                </div>
+                {% endif %}
+                {% if url_data.ssl_certificate.tls_version %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>TLS Version:</strong></div>
+                    <div class="col-md-9">
+                        <span class="badge bg-{% if 'TLSv1.3' in url_data.ssl_certificate.tls_version %}success{% elif 'TLSv1.2' in url_data.ssl_certificate.tls_version %}info{% else %}warning{% endif %}">
+                            {{ url_data.ssl_certificate.tls_version }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if enrichment.geoip %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-geo-alt"></i> IP Geolocation</h5>
+            </div>
+            <div class="card-body">
+                {% for ip, geoip in enrichment.geoip.items() %}
+                <div class="mb-3 {% if not loop.last %}pb-3 border-bottom{% endif %}">
+                    <h6 class="text-primary mb-3"><code>{{ ip }}</code></h6>
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Location:</strong></div>
+                        <div class="col-md-9">
+                            {% if geoip.city.name %}<i class="bi bi-building"></i> {{ geoip.city.name }},{% endif %}
+                            {% if geoip.subdivisions and geoip.subdivisions[0].name %}{{ geoip.subdivisions[0].name }},{% endif %}
+                            {% if geoip.country.name %}<span class="badge bg-primary">{{ geoip.country.iso_code }} - {{ geoip.country.name }}</span>{% endif %}
+                        </div>
+                    </div>
+                    {% if geoip.location.latitude and geoip.location.longitude %}
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Coordinates:</strong></div>
+                        <div class="col-md-9">
+                            <code>{{ "%.4f"|format(geoip.location.latitude) }}, {{ "%.4f"|format(geoip.location.longitude) }}</code>
+                            <a href="https://www.google.com/maps?q={{ geoip.location.latitude }},{{ geoip.location.longitude }}" target="_blank" class="btn btn-sm btn-outline-secondary ms-2">
+                                <i class="bi bi-map"></i> View on Map
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if geoip.asn %}
+                    <hr class="my-2">
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>ASN:</strong></div>
+                        <div class="col-md-9"><code>AS{{ geoip.asn.asn }}</code></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-3"><strong>Organization:</strong></div>
+                        <div class="col-md-9">{{ geoip.asn.asn_description }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Domain Enrichment (WHOIS + DNS) -->
+        {% set enrichment = ioc.get_enrichment() %}
+        {% if enrichment and enrichment.status == 'success' and enrichment.domain %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Domain Enrichment</h5>
+            </div>
+            <div class="card-body">
+                {% if enrichment.whois and enrichment.whois.domain_name %}
+                <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> WHOIS Information</h6>
+                {% if enrichment.registrar %}<div class="row mb-2"><div class="col-md-3"><strong>Registrar:</strong></div><div class="col-md-9">{{ enrichment.registrar }}</div></div>{% endif %}
+                {% if enrichment.registration_date %}<div class="row mb-2"><div class="col-md-3"><strong>Registered:</strong></div><div class="col-md-9">{{ enrichment.registration_date[:10] }}</div></div>{% endif %}
+                {% if enrichment.expiration_date %}<div class="row mb-2"><div class="col-md-3"><strong>Expires:</strong></div><div class="col-md-9">{{ enrichment.expiration_date[:10] }}</div></div>{% endif %}
+                {% if enrichment.whois.org %}<div class="row mb-2"><div class="col-md-3"><strong>Organization:</strong></div><div class="col-md-9">{{ enrichment.whois.org }}</div></div>{% endif %}
+                {% if enrichment.whois.country %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Country:</strong></div>
+                    <div class="col-md-9"><span class="badge bg-secondary">{{ enrichment.whois.country }}</span></div>
+                </div>
+                {% endif %}
+                {% if enrichment.whois.status %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Status:</strong></div>
+                    <div class="col-md-9" id="status-container">
+                        {% for status in enrichment.whois.status[:5] %}
+                        <span class="badge bg-info status-visible">{{ status|whois_status }}</span>
+                        {% endfor %}
+                        {% if enrichment.whois.status|length > 5 %}
+                        {% for status in enrichment.whois.status[5:] %}
+                        <span class="badge bg-info status-hidden" style="display: none;">{{ status|whois_status }}</span>
+                        {% endfor %}
+                        <a href="#" class="text-primary small d-block mt-1" id="toggle-status" onclick="toggleStatus(event)">
+                            <i class="bi bi-chevron-down"></i> Show {{ enrichment.whois.status|length - 5 }} more
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                <hr class="my-3">
+                {% endif %}
+
+                <h6 class="text-primary mb-3"><i class="bi bi-diagram-2"></i> DNS Records</h6>
+                {% if enrichment.a_records %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>A Records:</strong></div>
+                    <div class="col-md-9">{% for record in enrichment.a_records %}<code class="d-block small">{{ record }}</code>{% endfor %}</div>
+                </div>
+                {% endif %}
+                {% if enrichment.aaaa_records %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>AAAA Records:</strong></div>
+                    <div class="col-md-9">{% for record in enrichment.aaaa_records %}<code class="d-block small">{{ record }}</code>{% endfor %}</div>
+                </div>
+                {% endif %}
+                {% if enrichment.mx_records %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>MX Records:</strong></div>
+                    <div class="col-md-9">{% for record in enrichment.mx_records %}<code class="d-block small">{{ record.priority }} {{ record.host }}</code>{% endfor %}</div>
+                </div>
+                {% endif %}
+                {% if enrichment.ns_records or (enrichment.whois and enrichment.whois.name_servers) %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>Name Servers:</strong></div>
+                    <div class="col-md-9" id="ns-records-container">
+                        {% if enrichment.ns_records %}
+                            {% for ns in enrichment.ns_records[:5] %}<code class="d-block small ns-record-visible">{{ ns }}</code>{% endfor %}
+                            {% if enrichment.ns_records|length > 5 %}
+                            {% for ns in enrichment.ns_records[5:] %}<code class="d-block small ns-record-hidden" style="display: none;">{{ ns }}</code>{% endfor %}
+                            <a href="#" class="text-primary small" id="toggle-ns-records" onclick="toggleNsRecords(event)"><i class="bi bi-chevron-down"></i> Show {{ enrichment.ns_records|length - 5 }} more</a>
+                            {% endif %}
+                        {% elif enrichment.whois.name_servers %}
+                            {% for ns in enrichment.whois.name_servers[:5] %}<code class="d-block small ns-record-visible">{{ ns }}</code>{% endfor %}
+                            {% if enrichment.whois.name_servers|length > 5 %}
+                            {% for ns in enrichment.whois.name_servers[5:] %}<code class="d-block small ns-record-hidden" style="display: none;">{{ ns }}</code>{% endfor %}
+                            <a href="#" class="text-primary small" id="toggle-ns-records" onclick="toggleNsRecords(event)"><i class="bi bi-chevron-down"></i> Show {{ enrichment.whois.name_servers|length - 5 }} more</a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if enrichment.txt_records %}
+                <div class="row mb-2">
+                    <div class="col-md-3"><strong>TXT Records:</strong></div>
+                    <div class="col-md-9" id="txt-records-container">
+                        {% for record in enrichment.txt_records[:5] %}
+                        {% set brand_info = record|txt_record_brand %}
+                        <div class="mb-1 txt-record-visible">
+                            {% if brand_info %}<i class="{{ brand_info.icon }}" style="color: {{ brand_info.color }}; margin-right: 6px;" title="{{ brand_info.brand }}"></i>{% endif %}
+                            <code class="small" style="word-break: break-all;">{{ record[:100] }}{% if record|length > 100 %}...{% endif %}</code>
+                        </div>
+                        {% endfor %}
+                        {% if enrichment.txt_records|length > 5 %}
+                        {% for record in enrichment.txt_records[5:] %}
+                        {% set brand_info = record|txt_record_brand %}
+                        <div class="mb-1 txt-record-hidden" style="display: none;">
+                            {% if brand_info %}<i class="{{ brand_info.icon }}" style="color: {{ brand_info.color }}; margin-right: 6px;" title="{{ brand_info.brand }}"></i>{% endif %}
+                            <code class="small" style="word-break: break-all;">{{ record[:100] }}{% if record|length > 100 %}...{% endif %}</code>
+                        </div>
+                        {% endfor %}
+                        <a href="#" class="text-primary small" id="toggle-txt-records" onclick="toggleTxtRecords(event)"><i class="bi bi-chevron-down"></i> Show {{ enrichment.txt_records|length - 5 }} more</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.certificates %}
+                <hr>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <h6 class="text-primary mb-3"><i class="bi bi-shield-lock"></i> SSL/TLS Certificates ({{ enrichment.certificates|length }})</h6>
+                        {% for cert in enrichment.certificates[:5] %}
+                        <div class="mb-2 p-2 border rounded cert-visible d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div><strong>{{ cert.common_name }}</strong></div>
+                                <div class="small text-muted"><i class="bi bi-building"></i> {{ cert.issuer[:50] }}{% if cert.issuer|length > 50 %}...{% endif %}</div>
+                                <div class="small">
+                                    <i class="bi bi-calendar-check"></i> Valid: {{ cert.not_before[:10] if cert.not_before else 'N/A' }}
+                                    <i class="bi bi-arrow-right mx-1"></i>
+                                    <i class="bi bi-calendar-x"></i> {{ cert.not_after[:10] if cert.not_after else 'N/A' }}
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-info ms-2" onclick="showCertDetails('{{ cert.common_name|replace("'", "\\'") }}', '{{ cert.issuer|replace("'", "\\'") }}', '{{ cert.not_before }}', '{{ cert.not_after }}', '{{ cert.serial_number }}')">
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                        {% if enrichment.certificates|length > 5 %}
+                        {% for cert in enrichment.certificates[5:] %}
+                        <div class="mb-2 p-2 border rounded cert-hidden d-flex justify-content-between align-items-start" style="display: none;">
+                            <div class="flex-grow-1">
+                                <div><strong>{{ cert.common_name }}</strong></div>
+                                <div class="small text-muted"><i class="bi bi-building"></i> {{ cert.issuer[:50] }}{% if cert.issuer|length > 50 %}...{% endif %}</div>
+                                <div class="small">
+                                    <i class="bi bi-calendar-check"></i> Valid: {{ cert.not_before[:10] if cert.not_before else 'N/A' }}
+                                    <i class="bi bi-arrow-right mx-1"></i>
+                                    <i class="bi bi-calendar-x"></i> {{ cert.not_after[:10] if cert.not_after else 'N/A' }}
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-info ms-2" onclick="showCertDetails('{{ cert.common_name|replace("'", "\\'") }}', '{{ cert.issuer|replace("'", "\\'") }}', '{{ cert.not_before }}', '{{ cert.not_after }}', '{{ cert.serial_number }}')">
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                        <a href="#" class="text-primary small" id="toggle-certificates" onclick="toggleCertificates(event)">
+                            <i class="bi bi-chevron-down"></i> Show {{ enrichment.certificates|length - 5 }} more
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if enrichment.cached_at %}
+                <hr class="my-3">
+                <small class="text-muted"><i class="bi bi-clock"></i> Cached {{ enrichment.cached_at[:19] }}</small>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="col-md-4">
+
+            <!-- Metadata (dates only, no names) -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Metadata</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <small class="text-muted">Created At</small>
+                            <div>{{ ioc.created_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                        </div>
+                    </div>
+                    <div class="row mb-0">
+                        <div class="col-12">
+                            <small class="text-muted">Updated At</small>
+                            <div>{{ ioc.updated_at|datetime_format('%Y-%m-%d %H:%M:%S') }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expiration Info -->
+            {% if ioc.expires_at %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Expiration</h5>
+                </div>
+                <div class="card-body">
+                    {% set days_left = ((ioc.expires_at - ioc.updated_at).days) %}
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <small class="text-muted">Expires At</small>
+                            <div class="{% if ioc.is_expired() %}text-danger{% endif %}">
+                                {{ ioc.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% if ioc.is_expired() %}
+                                    <span class="badge bg-danger ms-1">Expired</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+<!-- Certificate Details Modal -->
+<div class="modal fade" id="certDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-shield-lock"></i> Certificate Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Common Name:</strong></div>
+                    <div class="col-md-9" id="cert-common-name"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Issuer:</strong></div>
+                    <div class="col-md-9 small" id="cert-issuer"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Valid From:</strong></div>
+                    <div class="col-md-9" id="cert-not-before"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Valid Until:</strong></div>
+                    <div class="col-md-9" id="cert-not-after"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Serial Number:</strong></div>
+                    <div class="col-md-9"><code id="cert-serial" class="small"></code></div>
+                </div>
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> This certificate information was retrieved from Certificate Transparency logs via crt.sh
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyShareUrl() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(function() {
+        const btn = document.getElementById('copyBtn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-light');
+        setTimeout(function() {
+            btn.innerHTML = original;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-light');
+        }, 2000);
+    });
+}
+
+function toggleTxtRecords(event) {
+    event.preventDefault();
+    const hiddenRecords = document.querySelectorAll('.txt-record-hidden');
+    const toggleLink = document.getElementById('toggle-txt-records');
+    const areHidden = hiddenRecords[0].style.display === 'none';
+    hiddenRecords.forEach(record => { record.style.display = areHidden ? 'block' : 'none'; });
+    toggleLink.innerHTML = areHidden ? '<i class="bi bi-chevron-up"></i> Show less' : `<i class="bi bi-chevron-down"></i> Show ${hiddenRecords.length} more`;
+}
+
+function toggleNsRecords(event) {
+    event.preventDefault();
+    const hiddenRecords = document.querySelectorAll('.ns-record-hidden');
+    const toggleLink = document.getElementById('toggle-ns-records');
+    const areHidden = hiddenRecords[0].style.display === 'none';
+    hiddenRecords.forEach(record => { record.style.display = areHidden ? 'block' : 'none'; });
+    toggleLink.innerHTML = areHidden ? '<i class="bi bi-chevron-up"></i> Show less' : `<i class="bi bi-chevron-down"></i> Show ${hiddenRecords.length} more`;
+}
+
+function toggleStatus(event) {
+    event.preventDefault();
+    const hiddenStatuses = document.querySelectorAll('.status-hidden');
+    const toggleLink = document.getElementById('toggle-status');
+    const areHidden = hiddenStatuses[0].style.display === 'none';
+    hiddenStatuses.forEach(status => { status.style.display = areHidden ? 'inline-block' : 'none'; });
+    toggleLink.innerHTML = areHidden ? '<i class="bi bi-chevron-up"></i> Show less' : `<i class="bi bi-chevron-down"></i> Show ${hiddenStatuses.length} more`;
+}
+
+function toggleCertificates(event) {
+    event.preventDefault();
+    const hiddenCerts = document.querySelectorAll('.cert-hidden');
+    const toggleLink = document.getElementById('toggle-certificates');
+    const areHidden = hiddenCerts[0].style.display === 'none';
+    hiddenCerts.forEach(cert => { cert.style.display = areHidden ? 'block' : 'none'; });
+    toggleLink.innerHTML = areHidden ? '<i class="bi bi-chevron-up"></i> Show less' : `<i class="bi bi-chevron-down"></i> Show ${hiddenCerts.length} more`;
+}
+
+function showCertDetails(commonName, issuer, notBefore, notAfter, serialNumber) {
+    document.getElementById('cert-common-name').textContent = commonName;
+    document.getElementById('cert-issuer').textContent = issuer;
+    const formatDate = (isoDate) => {
+        if (!isoDate || isoDate === 'null') return 'N/A';
+        try {
+            return new Date(isoDate).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+        } catch (e) { return isoDate; }
+    };
+    document.getElementById('cert-not-before').textContent = formatDate(notBefore);
+    document.getElementById('cert-not-after').textContent = formatDate(notAfter);
+    document.getElementById('cert-serial').textContent = serialNumber;
+    new bootstrap.Modal(document.getElementById('certDetailsModal')).show();
+}
+</script>
+{% endblock %}

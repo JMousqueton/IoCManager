@@ -160,6 +160,7 @@ def detail(id):
     return render_template('ioc/detail.html', ioc=ioc, now=datetime.utcnow, root_comments=root_comments)
 
 
+
 @ioc_bp.route('/<int:id>/graph-data')
 @login_required
 def graph_data(id):
