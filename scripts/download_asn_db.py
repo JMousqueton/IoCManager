@@ -358,9 +358,6 @@ def main():
                 verify_ssl=verify_ssl
             )
 
-            if asn_dir:
-                convert_to_pyasn_format(asn_dir)
-
     elif choice == '5':
         create_dummy_db()
 
