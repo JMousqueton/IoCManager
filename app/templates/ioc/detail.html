@@ -859,6 +859,7 @@
                         <small class="text-muted">VirusTotal API v3</small>
                         {% if enrichment.cached %}
                         <span class="badge bg-info text-dark ms-2">Cached</span>
+                        {% if enrichment.cached_at %}<small class="text-muted ms-1">{{ enrichment.cached_at[:19] }}</small>{% endif %}
                         {% endif %}
                     </div>
                 </div>
