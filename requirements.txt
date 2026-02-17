@@ -33,7 +33,7 @@ dnspython==2.6.1
 gunicorn==22.0.0
 
 # Security
-cryptography==44.0.1
+cryptography==46.0.5
 
 # MFA / TOTP
 pyotp==2.9.0
