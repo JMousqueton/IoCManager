@@ -22,6 +22,9 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
+    # Reviewer flag (combinable with any role)
+    is_reviewer = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
     # MFA fields
     mfa_enabled = db.Column(db.Boolean, default=False, nullable=False, index=True)
     mfa_secret = db.Column(db.String(255), nullable=True)  # Encrypted TOTP secret
@@ -75,6 +78,24 @@ class User(UserMixin, db.Model):
     def can_delete_ioc(self, ioc):
         """Check if user can delete an IOC"""
         return self.can_modify_ioc(ioc)
+
+    def can_review_ioc(self):
+        """Check if user can review/approve/reject IOCs"""
+        return self.is_admin() or self.is_reviewer
+
+    def can_submit_for_review(self, ioc):
+        """Check if user can submit an IOC for review"""
+        if self.is_admin():
+            return True
+        return self.role == 'User' and ioc.created_by == self.id
+
+    def can_archive_ioc(self, ioc):
+        """Check if user can archive an IOC"""
+        return self.is_admin() or self.is_reviewer
+
+    def can_restore_ioc(self, ioc):
+        """Check if user can restore an archived IOC"""
+        return self.is_admin() or self.is_reviewer
 
     def update_last_login(self):
         """Update last login timestamp"""

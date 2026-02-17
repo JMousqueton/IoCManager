@@ -290,12 +290,9 @@
                 <div class="row mb-3">
                     <div class="col-md-3"><strong>Status:</strong></div>
                     <div class="col-md-9">
+                        <span class="badge {{ ioc.status_badge_class }} me-2">{{ ioc.status_label }}</span>
                         {% if ioc.false_positive %}
                             <span class="badge bg-warning text-dark">False Positive</span>
-                        {% elif ioc.is_active %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Inactive</span>
                         {% endif %}
                     </div>
                 </div>
@@ -347,6 +344,150 @@
                             </div>
                         </form>
                     </div>
+                </div>
+
+                <!-- Lifecycle Actions & Info -->
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Lifecycle:</strong></div>
+                    <div class="col-md-9">
+                        <!-- Status Timeline -->
+                        <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
+                            {% for step in [('draft','Draft','bi-pencil-square'), ('review','In Review','bi-hourglass-split'), ('active','Active','bi-check-circle'), ('archived','Archived','bi-archive')] %}
+                            <span class="badge {% if ioc.status == step[0] %}{{ ioc.status_badge_class }}{% else %}bg-light text-muted{% endif %} px-2 py-1">
+                                <i class="bi {{ step[2] }}"></i> {{ step[1] }}
+                            </span>
+                            {% if not loop.last %}<i class="bi bi-arrow-right text-muted small"></i>{% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Approval info -->
+                        {% if ioc.approved_at %}
+                        <div class="small text-muted mb-1">
+                            <i class="bi bi-check-circle text-success"></i>
+                            Approved by
+                            <strong>{{ ioc.approver.username if ioc.approver else 'unknown' }}</strong>
+                            on {{ ioc.approved_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Rejection info -->
+                        {% if ioc.rejection_reason %}
+                        <div class="small text-danger mb-1">
+                            <i class="bi bi-x-circle"></i>
+                            Last rejected: <em>{{ ioc.rejection_reason }}</em>
+                        </div>
+                        {% endif %}
+
+                        <!-- Archive info -->
+                        {% if ioc.archived_at %}
+                        <div class="small text-muted mb-1">
+                            <i class="bi bi-archive"></i>
+                            Archived by <strong>{{ ioc.archiver.username if ioc.archiver else 'unknown' }}</strong>
+                            on {{ ioc.archived_at.strftime('%Y-%m-%d %H:%M') }}
+                            {% if ioc.archived_reason %} — <em>{{ ioc.archived_reason }}</em>{% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Action buttons -->
+                        <div class="mt-2 d-flex flex-wrap gap-2">
+                            {% if ioc.status == 'draft' and current_user.can_submit_for_review(ioc) %}
+                            <form method="POST" action="{{ url_for('ioc.submit_for_review', id=ioc.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-warning"
+                                        onclick="return confirm('Submit this IOC for review?')">
+                                    <i class="bi bi-send"></i> Submit for Review
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            {% if ioc.status == 'review' and current_user.can_review_ioc() %}
+                            <form method="POST" action="{{ url_for('ioc.approve_ioc', id=ioc.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        onclick="return confirm('Approve this IOC?')">
+                                    <i class="bi bi-check-lg"></i> Approve
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-danger"
+                                    data-bs-toggle="modal" data-bs-target="#rejectLifecycleModal">
+                                <i class="bi bi-x-lg"></i> Reject
+                            </button>
+                            {% endif %}
+
+                            {% if ioc.status in ['active', 'review'] and current_user.can_archive_ioc(ioc) %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal" data-bs-target="#archiveLifecycleModal">
+                                <i class="bi bi-archive"></i> Archive
+                            </button>
+                            {% endif %}
+
+                            {% if ioc.status == 'archived' and current_user.can_restore_ioc(ioc) %}
+                            <form method="POST" action="{{ url_for('ioc.restore_ioc', id=ioc.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        onclick="return confirm('Restore this IOC to active?')">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reject Modal -->
+        <div class="modal fade" id="rejectLifecycleModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST" action="{{ url_for('ioc.reject_ioc', id=ioc.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="bi bi-x-circle text-danger"></i> Reject IOC</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="rejection_reason" rows="3" required
+                                          placeholder="Explain why this IOC is being rejected…"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-x-circle"></i> Reject
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Archive Modal -->
+        <div class="modal fade" id="archiveLifecycleModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST" action="{{ url_for('ioc.archive_ioc', id=ioc.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="bi bi-archive text-secondary"></i> Archive IOC</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Archive Reason <span class="text-muted">(optional)</span></label>
+                                <textarea class="form-control" name="archive_reason" rows="2"
+                                          placeholder="Reason for archiving…"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="bi bi-archive"></i> Archive
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

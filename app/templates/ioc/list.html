@@ -44,9 +44,9 @@
                     {{ form.tlp.label(class="form-label") }}
                     {{ form.tlp(class="form-select") }}
                 </div>
-                <div class="col-md-1">
-                    {{ form.is_active.label(class="form-label") }}
-                    {{ form.is_active(class="form-select") }}
+                <div class="col-md-2">
+                    {{ form.lifecycle_status.label(class="form-label") }}
+                    {{ form.lifecycle_status(class="form-select") }}
                 </div>
                 <div class="col-md-2">
                     {{ form.needs_review.label(class="form-label") }}
@@ -108,12 +108,9 @@
                             <td><span class="badge bg-{{ ioc.tlp|tlp_badge }} text-dark">{{ ioc.tlp }}</span></td>
                             <td>{{ ioc.confidence }}%</td>
                             <td>
+                                <span class="badge {{ ioc.status_badge_class }}">{{ ioc.status_label }}</span>
                                 {% if ioc.false_positive %}
-                                    <span class="badge bg-warning text-dark">False Positive</span>
-                                {% elif ioc.is_active %}
-                                    <span class="badge bg-success">Active</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Inactive</span>
+                                    <span class="badge bg-warning text-dark ms-1">FP</span>
                                 {% endif %}
                             </td>
                             <td>

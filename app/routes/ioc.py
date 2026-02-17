@@ -50,6 +50,9 @@ def list():
     if form.needs_review.data:
         query = query.filter_by(needs_review=bool(int(form.needs_review.data)))
 
+    if form.lifecycle_status.data:
+        query = query.filter(IOC.status == form.lifecycle_status.data)
+
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = 25
@@ -89,6 +92,7 @@ def create():
     form.operating_system_id.choices = [(0, '-- Select Operating System --')] + [(os.id, os.name) for os in operating_systems]
 
     if form.validate_on_submit():
+        lifecycle_status = form.status.data or 'review'
         ioc = IOC(
             value=form.value.data,
             ioc_type_id=form.ioc_type_id.data,
@@ -98,10 +102,11 @@ def create():
             source=form.source.data,
             tlp=form.tlp.data,
             notes=form.notes.data,
-            is_active=form.is_active.data,
+            is_active=(lifecycle_status == 'active'),
             false_positive=form.false_positive.data,
             created_by=current_user.id,
-            operating_system_id=form.operating_system_id.data if form.operating_system_id.data else None
+            operating_system_id=form.operating_system_id.data if form.operating_system_id.data else None,
+            status=lifecycle_status,
         )
 
         # Handle expiration
@@ -118,7 +123,14 @@ def create():
         db.session.add(ioc)
         db.session.commit()
 
-        flash(f'IOC created successfully: {ioc.value[:50]}', 'success')
+        # If created directly in review, notify reviewers
+        if lifecycle_status == 'review':
+            from app.services.notification_service import NotificationService
+            NotificationService.notify_submitted_for_review(ioc)
+            db.session.commit()
+            flash(f'IOC submitted for review: {ioc.value[:50]}', 'info')
+        else:
+            flash(f'IOC created successfully: {ioc.value[:50]}', 'success')
         return redirect(url_for('ioc.detail', id=ioc.id))
 
     # Set defaults
@@ -352,19 +364,32 @@ def toggle_review(id):
     # Toggle the review flag
     ioc.needs_review = not ioc.needs_review
 
+    # Sync lifecycle status: marking for review → set status to 'review'
+    # Unmarking → restore to 'active' only if it was in review
+    if ioc.needs_review:
+        if ioc.status == 'active':
+            ioc.status = 'review'
+            ioc.is_active = False
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_submitted_for_review(ioc)
+    else:
+        if ioc.status == 'review':
+            ioc.status = 'active'
+            ioc.is_active = True
+
     # Audit log
     log = AuditLog(
         user_id=current_user.id,
         action='UPDATE',
         resource_type='IOC',
         resource_id=ioc.id,
-        details=f'{"Marked" if ioc.needs_review else "Unmarked"} IOC for review'
+        details=f'{"Marked" if ioc.needs_review else "Unmarked"} IOC for review (lifecycle: {ioc.status})'
     )
     db.session.add(log)
     db.session.commit()
 
     if ioc.needs_review:
-        flash('IOC marked for review. Any user can now edit this IOC.', 'success')
+        flash('IOC marked for review and moved to In Review status.', 'success')
     else:
         flash('IOC unmarked for review. Normal edit permissions restored.', 'success')
 
@@ -793,3 +818,193 @@ def generate_yara(id):
         'ioc_id': ioc.id,
         'ioc_value': ioc.value[:50] + '...' if len(ioc.value) > 50 else ioc.value
     })
+
+
+# ──────────────────────────────────────────────────────────────
+# Lifecycle state transition routes
+# ──────────────────────────────────────────────────────────────
+
+@ioc_bp.route('/<int:id>/submit-for-review', methods=['POST'])
+@login_required
+def submit_for_review(id):
+    """Submit a draft IOC for review"""
+    ioc = IOC.query.get_or_404(id)
+
+    if not current_user.can_submit_for_review(ioc):
+        abort(403)
+
+    if ioc.status != 'draft':
+        flash('Only draft IOCs can be submitted for review.', 'warning')
+        return redirect(url_for('ioc.detail', id=id))
+
+    try:
+        ioc.submit_for_review()
+
+        # Queue notifications for reviewers
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_submitted_for_review(ioc)
+
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='IOC',
+            resource_id=ioc.id,
+            details=f'Submitted IOC for review: {ioc.value[:100]}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        flash('IOC submitted for review.', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+
+    return redirect(url_for('ioc.detail', id=id))
+
+
+@ioc_bp.route('/<int:id>/approve', methods=['POST'])
+@login_required
+def approve_ioc(id):
+    """Approve an IOC in review (reviewers / admins only)"""
+    ioc = IOC.query.get_or_404(id)
+
+    if not current_user.can_review_ioc():
+        abort(403)
+
+    if ioc.status != 'review':
+        flash('Only IOCs in review can be approved.', 'warning')
+        return redirect(url_for('ioc.detail', id=id))
+
+    try:
+        ioc.approve(current_user)
+        ioc.needs_review = False
+
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_approved(ioc, current_user)
+
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='IOC',
+            resource_id=ioc.id,
+            details=f'Approved IOC: {ioc.value[:100]}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        flash('IOC approved and set to active.', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+
+    return redirect(url_for('ioc.detail', id=id))
+
+
+@ioc_bp.route('/<int:id>/reject', methods=['POST'])
+@login_required
+def reject_ioc(id):
+    """Reject an IOC in review back to draft"""
+    ioc = IOC.query.get_or_404(id)
+
+    if not current_user.can_review_ioc():
+        abort(403)
+
+    if ioc.status != 'review':
+        flash('Only IOCs in review can be rejected.', 'warning')
+        return redirect(url_for('ioc.detail', id=id))
+
+    reason = request.form.get('rejection_reason', '').strip()
+    if not reason:
+        flash('A rejection reason is required.', 'danger')
+        return redirect(url_for('ioc.detail', id=id))
+
+    try:
+        ioc.reject(current_user, reason)
+
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_rejected(ioc, current_user, reason)
+
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='IOC',
+            resource_id=ioc.id,
+            details=f'Rejected IOC: {ioc.value[:100]} — Reason: {reason}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        flash('IOC rejected and returned to draft.', 'warning')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+
+    return redirect(url_for('ioc.detail', id=id))
+
+
+@ioc_bp.route('/<int:id>/archive', methods=['POST'])
+@login_required
+def archive_ioc(id):
+    """Archive an active or in-review IOC"""
+    ioc = IOC.query.get_or_404(id)
+
+    if not current_user.can_archive_ioc(ioc):
+        abort(403)
+
+    if ioc.status not in ('active', 'review'):
+        flash('Only active or in-review IOCs can be archived.', 'warning')
+        return redirect(url_for('ioc.detail', id=id))
+
+    reason = request.form.get('archive_reason', '').strip() or None
+
+    try:
+        ioc.archive(current_user, reason)
+
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_archived(ioc, current_user, reason)
+
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='IOC',
+            resource_id=ioc.id,
+            details=f'Archived IOC: {ioc.value[:100]}' + (f' — Reason: {reason}' if reason else '')
+        )
+        db.session.add(log)
+        db.session.commit()
+        flash('IOC archived.', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+
+    return redirect(url_for('ioc.detail', id=id))
+
+
+@ioc_bp.route('/<int:id>/restore', methods=['POST'])
+@login_required
+def restore_ioc(id):
+    """Restore an archived IOC back to active"""
+    ioc = IOC.query.get_or_404(id)
+
+    if not current_user.can_restore_ioc(ioc):
+        abort(403)
+
+    if ioc.status != 'archived':
+        flash('Only archived IOCs can be restored.', 'warning')
+        return redirect(url_for('ioc.detail', id=id))
+
+    try:
+        ioc.restore()
+
+        log = AuditLog(
+            user_id=current_user.id,
+            action='UPDATE',
+            resource_type='IOC',
+            resource_id=ioc.id,
+            details=f'Restored archived IOC: {ioc.value[:100]}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        flash('IOC restored to active.', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+
+    return redirect(url_for('ioc.detail', id=id))

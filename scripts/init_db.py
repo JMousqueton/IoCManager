@@ -35,6 +35,7 @@ load_dotenv()
 from app import create_app, db
 from app.models import (
     User, IOC, IOCType, Tag, IOCTag, OperatingSystem,
+    PendingNotification,
     VirusTotalCache, ASLookupCache, URLScanCache,
     DomainEnrichmentCache, URLEnrichmentCache,
     AuditLog, Session
@@ -61,9 +62,10 @@ def create_all_tables():
         print("✓ All tables created successfully")
         print("  - Users")
         print("  - IOC Types")
-        print("  - IOCs")
+        print("  - IOCs (with lifecycle status: draft | review | active | archived)")
         print("  - Tags")
         print("  - Operating Systems")
+        print("  - Pending Notifications (lifecycle digest queue)")
         print("  - Cache tables (VirusTotal, URLScan, Domain Enrichment, URL Enrichment, AS Lookup)")
         print("  - Audit Logs")
         print("  - Sessions")
@@ -471,6 +473,7 @@ def create_sample_data():
                     severity=ioc_data['severity'],
                     tlp=ioc_data['tlp'],
                     is_active=True,
+                    status='active',  # Sample data is created directly as active
                     created_by=admin.id,
                     created_at=datetime.utcnow()
                 )
@@ -509,13 +512,25 @@ def show_database_info():
         tag_count = Tag.query.count()
         ioc_type_count = IOCType.query.count()
         os_count = OperatingSystem.query.count()
+        notif_count = PendingNotification.query.count()
+
+        # Lifecycle status breakdown
+        draft_count = IOC.query.filter_by(status='draft').count()
+        review_count = IOC.query.filter_by(status='review').count()
+        active_count = IOC.query.filter_by(status='active').count()
+        archived_count = IOC.query.filter_by(status='archived').count()
 
         print(f"\nRecords:")
         print(f"  Users: {user_count}")
         print(f"  IOC Types: {ioc_type_count}")
         print(f"  IOCs: {ioc_count}")
+        print(f"    - Draft:    {draft_count}")
+        print(f"    - Review:   {review_count}")
+        print(f"    - Active:   {active_count}")
+        print(f"    - Archived: {archived_count}")
         print(f"  Tags: {tag_count}")
         print(f"  Operating Systems: {os_count}")
+        print(f"  Pending Notifications: {notif_count}")
 
         # List users
         if user_count > 0:

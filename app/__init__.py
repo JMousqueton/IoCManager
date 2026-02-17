@@ -175,3 +175,16 @@ def register_template_filters(app):
         # Match both "IOC#123" and "IOC #123" (with or without space/hash)
         match = re.search(r'IOC\s*#?(\d+)', text)
         return match.group(1) if match else None
+
+    @app.context_processor
+    def inject_lifecycle_context():
+        """Inject pending review count into all templates"""
+        from flask_login import current_user
+        try:
+            if current_user.is_authenticated and current_user.can_review_ioc():
+                from app.models.ioc import IOC
+                count = IOC.query.filter(IOC.status == 'review').count()
+                return {'ioc_pending_review_count': count}
+        except Exception:
+            pass
+        return {'ioc_pending_review_count': 0}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #212529;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header p  { margin: 6px 0 0; opacity: 0.7; font-size: 13px; }
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 10px 16px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .section-header.pending_review  { background: #fff3cd; color: #856404; }
+        .section-header.approved        { background: #d1e7dd; color: #0a3622; }
+        .section-header.rejected        { background: #f8d7da; color: #58151c; }
+        .section-header.archived        { background: #e2e3e5; color: #41464b; }
+        .ioc-row {
+            padding: 10px 16px;
+            border-top: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+        .ioc-value { font-family: monospace; font-weight: bold; }
+        .detail    { color: #6c757d; margin-top: 2px; }
+        .footer {
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge-warning  { background: #fff3cd; color: #856404; }
+        .badge-success  { background: #d1e7dd; color: #0a3622; }
+        .badge-danger   { background: #f8d7da; color: #58151c; }
+        .badge-dark     { background: #d3d3d4; color: #41464b; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>&#128274; IOC Manager — Lifecycle Digest</h1>
+    <p>{{ total }} notification(s) for {{ user.username }} &bull; {{ generated_at.strftime('%Y-%m-%d') }}</p>
+</div>
+
+{% if groups %}
+    {% for notif_type, items in groups.items() %}
+    <div class="section">
+        <div class="section-header {{ notif_type }}">
+            {% if notif_type == 'pending_review' %}
+                &#9203; {{ items|length }} IOC(s) pending your review
+            {% elif notif_type == 'approved' %}
+                &#9989; {{ items|length }} IOC(s) approved
+            {% elif notif_type == 'rejected' %}
+                &#10060; {{ items|length }} IOC(s) rejected
+            {% elif notif_type == 'archived' %}
+                &#128190; {{ items|length }} IOC(s) archived
+            {% else %}
+                {{ items|length }} notification(s) — {{ notif_type }}
+            {% endif %}
+        </div>
+
+        {% for notif in items %}
+        {% set ioc = notif.ioc %}
+        <div class="ioc-row">
+            <div class="ioc-value">{{ ioc.value[:80] }}{% if ioc.value|length > 80 %}…{% endif %}</div>
+            {% set details = notif.get_details() %}
+            <div class="detail">
+                Type: {{ ioc.ioc_type.name if ioc.ioc_type else 'N/A' }}
+                &nbsp;&bull;&nbsp;
+                Severity: {{ ioc.severity or 'N/A' }}
+                {% if notif_type == 'approved' and details.approved_by %}
+                    &nbsp;&bull;&nbsp; Approved by <strong>{{ details.approved_by }}</strong>
+                {% elif notif_type == 'rejected' %}
+                    {% if details.rejected_by %}&nbsp;&bull;&nbsp; Rejected by <strong>{{ details.rejected_by }}</strong>{% endif %}
+                    {% if details.reason %}<br><em>Reason: {{ details.reason }}</em>{% endif %}
+                {% elif notif_type == 'archived' %}
+                    {% if details.archived_by %}&nbsp;&bull;&nbsp; Archived by <strong>{{ details.archived_by }}</strong>{% endif %}
+                    {% if details.reason %}<br><em>Reason: {{ details.reason }}</em>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+{% else %}
+<p style="text-align:center; color:#6c757d;">No pending notifications.</p>
+{% endif %}
+
+<div class="footer">
+    <p>This is an automated digest from <strong>IOC Manager</strong>.<br>
+    Generated at {{ generated_at.strftime('%Y-%m-%d %H:%M UTC') }}.</p>
+</div>
+
+</body>
+</html>

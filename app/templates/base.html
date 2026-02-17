@@ -58,6 +58,18 @@
                         </a>
                     </li>
                     {% endif %}
+                    {% if current_user.is_authenticated and current_user.can_review_ioc() %}
+                    {% set _review_count = namespace(n=0) %}
+                    {% set _review_count.n = ioc_pending_review_count | default(0) %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.approvals') }}">
+                            <i class="bi bi-shield-check"></i> Approvals
+                            {% if _review_count.n > 0 %}
+                            <span class="badge bg-warning text-dark">{{ _review_count.n }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">

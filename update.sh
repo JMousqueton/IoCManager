@@ -200,9 +200,21 @@ update_dependencies() {
 run_migrations() {
     log "Checking for database migrations..."
 
-    # Check if there are any migration scripts in scripts/ directory
-    if [ -d "scripts" ] && ls scripts/migrate*.py 1> /dev/null 2>&1; then
-        log "Found migration scripts, running migrations..."
+    # Collect migration scripts from migrations/ (preferred) and scripts/ (legacy)
+    MIGRATION_SCRIPTS=()
+    if [ -d "migrations" ]; then
+        for f in migrations/migrate*.py; do
+            [ -f "$f" ] && MIGRATION_SCRIPTS+=("$f")
+        done
+    fi
+    if [ -d "scripts" ]; then
+        for f in scripts/migrate*.py; do
+            [ -f "$f" ] && MIGRATION_SCRIPTS+=("$f")
+        done
+    fi
+
+    if [ ${#MIGRATION_SCRIPTS[@]} -gt 0 ]; then
+        log "Found ${#MIGRATION_SCRIPTS[@]} migration script(s), running migrations..."
 
         # Activate virtual environment if it exists
         if [ -d "venv" ]; then
@@ -212,7 +224,7 @@ run_migrations() {
         fi
 
         # Run each migration script
-        for migration in scripts/migrate*.py; do
+        for migration in "${MIGRATION_SCRIPTS[@]}"; do
             log "Running migration: $(basename $migration)"
             if PYTHONPATH=. python3 "$migration"; then
                 success "Migration completed: $(basename $migration)"

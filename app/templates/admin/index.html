@@ -73,6 +73,13 @@
             <i class="bi bi-clock-history"></i> Audit Logs
         </a>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'reviewers' %}active{% endif %}"
+           href="{{ url_for('admin.reviewers') }}"
+           role="tab">
+            <i class="bi bi-shield-check"></i> Reviewers
+        </a>
+    </li>
 </ul>
 
 <!-- Tab Content -->
@@ -777,6 +784,61 @@
                     </ul>
                 </nav>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Reviewers Tab -->
+    {% if active_tab == 'reviewers' %}
+    <div class="tab-pane fade show active" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> Reviewer Management</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Reviewers can approve or reject IOCs submitted for review. The reviewer flag is independent of the user's role.</p>
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th class="text-center">Reviewer</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in all_users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td><span class="badge bg-secondary">{{ user.role }}</span></td>
+                            <td class="text-center">
+                                {% if user.is_reviewer %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Yes</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">No</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <form method="POST" action="{{ url_for('admin.toggle_reviewer', user_id=user.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm {% if user.is_reviewer %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                        {% if user.is_reviewer %}
+                                            <i class="bi bi-x-circle"></i> Revoke
+                                        {% else %}
+                                            <i class="bi bi-plus-circle"></i> Grant
+                                        {% endif %}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center text-muted">No users found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

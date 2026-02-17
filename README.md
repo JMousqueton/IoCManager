@@ -20,6 +20,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 - **Tagging System**: Organize IOCs with customizable colored tags
 - **IOC Expiration**: Automatic TTL-based expiration with configurable policies
 - **Collaborative Review**: Mark IOCs for review to enable collaborative editing by any user
+- **Lifecycle Management**: Full approval workflow with Draft → In Review → Active → Archived states
 
 ### Threat Intelligence Enrichment
 - **VirusTotal Integration**: Automatic malware analysis and reputation scoring
@@ -38,8 +39,9 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 
 ### Reporting & Automation
 - **Email Reports**: Automated daily and weekly reports with statistics and trends
+- **Lifecycle Digest**: Daily email digest of pending approvals, approvals, rejections, and archives
 - **Dashboard**: Real-time metrics and visualizations
-- **Search & Filter**: Advanced filtering by type, severity, tags, review status, and date ranges
+- **Search & Filter**: Advanced filtering by type, severity, tags, lifecycle status, and date ranges
 - **Bulk Operations**: Import and export IOCs (coming soon)
 
 ### Administration & Configuration
@@ -48,6 +50,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 - **API Key Management**: Secure API key configuration (VirusTotal, URLScan.io, etc.)
 - **Audit Logs Viewer**: Search, filter, and purge audit logs with clickable resource links
 - **User Management**: Create, edit, and manage user accounts and permissions
+- **Reviewer Management**: Grant or revoke the reviewer flag per user (independent of role)
 
 ### Security & Access Control
 - **Role-Based Access Control (RBAC)**: Admin, User, and Viewer roles
@@ -151,6 +154,10 @@ MAIL_PASSWORD=your-app-password
 IOC_DEFAULT_TTL_DAYS=90
 IOC_AUTO_EXPIRE_ENABLED=True
 
+# IOC Lifecycle Management
+DRAFT_RETENTION_DAYS=30        # Auto-archive drafts older than N days
+NOTIFICATION_RETENTION_DAYS=7  # Purge processed notifications after N days
+
 # Authentication
 REGISTRATION_ENABLED=False  # Disable public registration
 ```
@@ -166,7 +173,10 @@ See `.env.example` for all available options.
 3. Enter the IOC value
 4. Set severity, confidence, and TLP level
 5. Add description and tags
-6. Click **Create IOC**
+6. Choose a **Lifecycle Status**: *To be reviewed* (default), *Active*, or *Draft*
+7. Click **Create IOC**
+
+> IOCs created as **To be reviewed** are immediately placed in the approval queue and reviewers are notified.
 
 ### Enriching IOCs
 
@@ -200,15 +210,55 @@ Add comments to IOCs for collaboration:
 - **Reply** to create threaded discussions
 - **Edit/Delete** your own comments
 
-### IOC Review Workflow
+### IOC Lifecycle Management
 
-Enable collaborative review for quality assurance:
-1. Open an IOC detail page
-2. Toggle the **"To be reviewed"** switch in the metadata section
-3. IOC will show a review badge in the IOC list
-4. Any User or Admin can now edit the IOC (not just the creator)
-5. After review is complete, toggle the switch again to remove review status
-6. All review status changes are logged in the audit trail
+IOCs follow a structured approval workflow to ensure quality and accountability.
+
+#### States
+
+| State | Description |
+|-------|-------------|
+| **Draft** | Work in progress — only the creator and admins can see and edit it |
+| **In Review** | Submitted for approval — reviewers are notified and can approve or reject |
+| **Active** | Approved and operational — visible to all users |
+| **Archived** | Retired — kept for historical reference, no longer active |
+
+#### Workflow
+
+```
+Draft ──→ In Review ──→ Active ──→ Archived
+            │                         ↑
+            └─── (rejected) ──→ Draft   └─── Restore
+```
+
+#### For IOC Creators
+
+1. Create an IOC — it defaults to **In Review** and reviewers are notified automatically
+2. Alternatively, save as **Draft** to continue editing before submitting
+3. On a Draft IOC, click **Submit for Review** when ready
+4. Once approved, the IOC becomes **Active**
+5. If rejected, the IOC returns to **Draft** with a rejection reason you can address
+
+#### For Reviewers / Admins
+
+1. A badge in the navbar shows the number of IOCs pending review
+2. Navigate to **Approvals** in the top menu to see the full queue
+3. On any IOC in review, click **Approve** to make it active or **Reject** with a reason
+4. Reviewers can also **Archive** active IOCs and **Restore** archived ones
+
+#### Marking for Review (quick path)
+
+On any **Active** IOC detail page:
+1. Toggle the **"To be reviewed"** switch
+2. The lifecycle status automatically moves to **In Review** and reviewers are notified
+3. Toggling it off restores the status to **Active**
+
+#### Reviewer Role
+
+The reviewer flag is independent of the user's role and can be granted to any user:
+1. Navigate to **Admin → Reviewers**
+2. Click **Grant** next to any user to give them reviewer privileges
+3. Click **Revoke** to remove reviewer access
 
 ### Multi-Factor Authentication (MFA)
 
@@ -295,6 +345,24 @@ Schedule with cron:
 ```
 
 
+### IOC Lifecycle Automation
+
+Schedule lifecycle tasks with cron:
+
+```bash
+# Daily lifecycle digest email (notifies reviewers of pending IOCs and creators of decisions)
+0 8 * * * cd /path/to/IoCManager && PYTHONPATH=. venv/bin/python3 scripts/send_daily_lifecycle_digest.py >> /var/log/iocmanager-digest.log 2>&1
+
+# Retention policy enforcement (auto-archives stale drafts and expired active IOCs)
+0 2 * * * cd /path/to/IoCManager && PYTHONPATH=. venv/bin/python3 scripts/enforce_retention_policies.py >> /var/log/iocmanager-retention.log 2>&1
+```
+
+Configure retention in `.env`:
+```bash
+DRAFT_RETENTION_DAYS=30        # Drafts untouched for 30 days → auto-archived
+NOTIFICATION_RETENTION_DAYS=7  # Processed notifications purged after 7 days
+```
+
 ### IOC Expiration
 
 Automatically expire old IOCs:
@@ -343,17 +411,25 @@ Export IOCs for TAXII sharing:
 
 | Role | Permissions |
 |------|-------------|
-| **Admin** | Full access: manage users, delete any content, access admin panel, configure system settings |
-| **User** | Create, edit own IOCs and comments, edit IOCs marked for review |
+| **Admin** | Full access: manage users, delete any content, access admin panel, configure system settings. Can approve/reject/archive/restore IOCs. |
+| **User** | Create and edit own IOCs and comments. Can submit IOCs for review. Can edit IOCs marked for review. |
 | **Viewer** | Read-only access to IOCs and comments |
 
-### IOC Review Feature
+### Reviewer Flag
 
-IOCs can be marked for collaborative review, allowing any User or Admin to edit them regardless of who created them. This feature enables:
-- **Quality Assurance**: Team members can review and improve IOCs
-- **Collaborative Enrichment**: Multiple analysts can contribute to IOC details
-- **Badge Visibility**: IOCs marked for review show a clear badge in the IOC list
-- **Audit Tracking**: All review status changes are logged in the audit trail
+The **Reviewer** flag is a permission modifier independent of the user role. It can be combined with any role:
+
+| Permission | Viewer | User | Admin | Reviewer (any role) |
+|------------|:------:|:----:|:-----:|:-------------------:|
+| View IOCs | ✓ | ✓ | ✓ | ✓ |
+| Create IOCs | | ✓ | ✓ | |
+| Edit own IOCs | | ✓ | ✓ | |
+| Submit for review | | ✓ | ✓ | |
+| **Approve / Reject** | | | ✓ | **✓** |
+| **Archive / Restore** | | | ✓ | **✓** |
+| Admin panel | | | ✓ | |
+
+Reviewer access is managed in **Admin → Reviewers**.
 
 ## 📊 Dashboard Metrics
 
@@ -408,16 +484,19 @@ IoCManager/
 │   │   ├── virustotal.py
 │   │   ├── urlscan.py
 │   │   ├── yara_generator.py
-│   │   └── report_generator.py
+│   │   ├── report_generator.py
+│   │   └── notification_service.py
 │   ├── utils/                # Utilities
 │   │   └── markdown.py
 │   └── templates/            # Jinja2 templates
-├── scripts/                  # Management scripts
+├── scripts/                  # Management & automation scripts
 │   ├── init_db.py
 │   ├── download_asn_db.py
 │   ├── send_daily_report.py
 │   ├── send_weekly_report.py
-│   └── expire_iocs.py
+│   ├── expire_iocs.py
+│   ├── send_daily_lifecycle_digest.py
+│   └── enforce_retention_policies.py
 ├── instance/                 # Instance-specific files
 ├── .env                      # Environment variables
 ├── requirements.txt          # Python dependencies
@@ -464,13 +543,6 @@ Contributions are welcome! Please:
 
 **Issue**: VirusTotal enrichment failing
 - **Solution**: Verify API key, check rate limits (4 requests/minute for free tier)
-
-**Issue**: Database errors or missing columns
-- **Solution**: Run migration scripts:
-  ```bash
-  python scripts/migrate_add_updated_by.py
-  python scripts/migrate_add_expiration.py
-  ```
 
 **Issue**: Permission denied errors
 - **Solution**: Ensure scripts are executable: `chmod +x scripts/*.py`

@@ -118,12 +118,11 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="form-check">
-                                {{ form.is_active(class="form-check-input") }}
-                                {{ form.is_active.label(class="form-check-label") }}
-                            </div>
+                            {{ form.status.label(class="form-label") }}
+                            {{ form.status(class="form-select") }}
+                            <div class="form-text"><em>To be reviewed</em> is the default — a reviewer must approve it before it becomes active.</div>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3 d-flex align-items-end pb-2">
                             <div class="form-check">
                                 {{ form.false_positive(class="form-check-input") }}
                                 {{ form.false_positive.label(class="form-check-label") }}

@@ -81,9 +81,21 @@ class IOC(db.Model):
     # Operating System (for hash-type IOCs)
     operating_system_id = db.Column(db.Integer, db.ForeignKey('operating_systems.id'), nullable=True)
 
+    # Lifecycle status: draft | review | active | archived
+    status = db.Column(db.String(20), nullable=False, default='active', index=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
+    rejected_at = db.Column(db.DateTime, nullable=True)
+    archived_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    archived_at = db.Column(db.DateTime, nullable=True, index=True)
+    archived_reason = db.Column(db.Text, nullable=True)
+
     # Relationships
     tags = db.relationship('Tag', secondary='ioc_tags', backref=db.backref('iocs', lazy='dynamic'))
     operating_system = db.relationship('OperatingSystem', back_populates='iocs')
+    approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('iocs_approved', lazy='dynamic'))
+    archiver = db.relationship('User', foreign_keys=[archived_by], backref=db.backref('iocs_archived', lazy='dynamic'))
 
     # Constraints
     __table_args__ = (
@@ -146,6 +158,91 @@ class IOC(db.Model):
             self.expires_at = self.expires_at + timedelta(days=additional_days)
         else:
             self.set_expiration(additional_days)
+
+    # ──────────────────────────────────────────────────────────────
+    # Lifecycle state machine
+    # ──────────────────────────────────────────────────────────────
+
+    @property
+    def is_draft(self):
+        return self.status == 'draft'
+
+    @property
+    def is_in_review(self):
+        return self.status == 'review'
+
+    @property
+    def is_active_status(self):
+        return self.status == 'active'
+
+    @property
+    def is_archived_status(self):
+        return self.status == 'archived'
+
+    @property
+    def status_label(self):
+        """Human-readable status label"""
+        return {
+            'draft': 'Draft',
+            'review': 'In Review',
+            'active': 'Active',
+            'archived': 'Archived',
+        }.get(self.status, self.status.capitalize())
+
+    @property
+    def status_badge_class(self):
+        """Bootstrap badge class for current status"""
+        return {
+            'draft': 'bg-secondary',
+            'review': 'bg-warning text-dark',
+            'active': 'bg-success',
+            'archived': 'bg-dark',
+        }.get(self.status, 'bg-secondary')
+
+    def submit_for_review(self):
+        """Transition from draft to review"""
+        if self.status != 'draft':
+            raise ValueError(f"Cannot submit for review from status '{self.status}'")
+        self.status = 'review'
+
+    def approve(self, user):
+        """Transition from review to active"""
+        if self.status != 'review':
+            raise ValueError(f"Cannot approve from status '{self.status}'")
+        self.status = 'active'
+        self.is_active = True
+        self.approved_by = user.id
+        self.approved_at = datetime.utcnow()
+        self.rejection_reason = None
+        self.rejected_at = None
+
+    def reject(self, user, reason):
+        """Reject from review back to draft"""
+        if self.status != 'review':
+            raise ValueError(f"Cannot reject from status '{self.status}'")
+        self.status = 'draft'
+        self.rejection_reason = reason
+        self.rejected_at = datetime.utcnow()
+
+    def archive(self, user, reason=None):
+        """Transition to archived from active"""
+        if self.status not in ('active', 'review'):
+            raise ValueError(f"Cannot archive from status '{self.status}'")
+        self.status = 'archived'
+        self.is_active = False
+        self.archived_by = user.id
+        self.archived_at = datetime.utcnow()
+        self.archived_reason = reason
+
+    def restore(self):
+        """Restore archived IOC back to active"""
+        if self.status != 'archived':
+            raise ValueError(f"Cannot restore from status '{self.status}'")
+        self.status = 'active'
+        self.is_active = True
+        self.archived_at = None
+        self.archived_by = None
+        self.archived_reason = None
 
     def to_dict(self, include_enrichment=False):
         """Convert to dictionary"""

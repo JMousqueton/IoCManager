@@ -32,6 +32,22 @@ def admin_required(f):
     return decorated_function
 
 
+def reviewer_required(f):
+    """Decorator to require reviewer flag or admin role"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('auth.login'))
+
+        if not current_user.can_review_ioc():
+            flash('You do not have permission to access this page.', 'danger')
+            abort(403)
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @admin_bp.route('/')
 @login_required
 @admin_required
@@ -739,3 +755,67 @@ def purge_audit_logs():
         flash(f'Error purging audit logs: {str(e)}', 'danger')
 
     return redirect(url_for('admin.audit'))
+
+
+# ──────────────────────────────────────────────────────────────
+# Approvals Dashboard (accessible to Reviewers + Admins)
+# ──────────────────────────────────────────────────────────────
+
+@admin_bp.route('/approvals')
+@login_required
+@reviewer_required
+def approvals():
+    """IOC approval queue — shows all IOCs in 'review' status"""
+    from app.models.ioc import IOC
+    from app.services.notification_service import NotificationService
+
+    pending_iocs = (
+        IOC.query
+        .filter(IOC.status == 'review')
+        .order_by(IOC.updated_at.asc())
+        .all()
+    )
+
+    pending_count = len(pending_iocs)
+
+    return render_template(
+        'admin/approvals.html',
+        pending_iocs=pending_iocs,
+        pending_count=pending_count,
+    )
+
+
+# ──────────────────────────────────────────────────────────────
+# Reviewer Management (admin only)
+# ──────────────────────────────────────────────────────────────
+
+@admin_bp.route('/reviewers')
+@login_required
+@admin_required
+def reviewers():
+    """Manage reviewer flags on users"""
+    all_users = User.query.filter(User.is_active == True).order_by(User.username).all()
+    return render_template('admin/index.html', active_tab='reviewers', all_users=all_users)
+
+
+@admin_bp.route('/reviewers/<int:user_id>/toggle', methods=['POST'])
+@login_required
+@admin_required
+def toggle_reviewer(user_id):
+    """Toggle reviewer flag for a user"""
+    user = User.query.get_or_404(user_id)
+    user.is_reviewer = not user.is_reviewer
+    action = 'granted' if user.is_reviewer else 'revoked'
+
+    log = AuditLog(
+        user_id=current_user.id,
+        action='UPDATE',
+        resource_type='User',
+        resource_id=user.id,
+        details=f'Reviewer role {action} for user: {user.username}'
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    flash(f'Reviewer role {action} for {user.username}.', 'success')
+    return redirect(url_for('admin.reviewers'))

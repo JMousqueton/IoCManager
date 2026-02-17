@@ -44,6 +44,11 @@ class IOCForm(FlaskForm):
     notes = TextAreaField('Notes', validators=[
         Length(max=5000, message='Notes are too long')
     ])
+    status = SelectField('Lifecycle Status', choices=[
+        ('review', 'To be reviewed'),
+        ('active', 'Active'),
+        ('draft', 'Draft (submit later)'),
+    ], validators=[Optional()], default='review')
     is_active = BooleanField('Active')
     false_positive = BooleanField('Mark as False Positive')
     expiration_days = IntegerField(
@@ -80,6 +85,13 @@ class IOCSearchForm(FlaskForm):
         ('', 'All'),
         ('1', 'Active'),
         ('0', 'Inactive')
+    ], validators=[Optional()])
+    lifecycle_status = SelectField('Lifecycle', choices=[
+        ('', 'All'),
+        ('draft', 'Draft'),
+        ('review', 'In Review'),
+        ('active', 'Active'),
+        ('archived', 'Archived'),
     ], validators=[Optional()])
     needs_review = SelectField('Review Status', choices=[
         ('', 'All'),
