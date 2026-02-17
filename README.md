@@ -112,7 +112,7 @@ A comprehensive web-based platform for managing, enriching, and analyzing Indica
 
 8. **Access the application**
    - Open browser: http://localhost:5000
-   - Default admin credentials: `admin` / `admin123` (change immediately!)
+   - Default admin credentials: `admin` / `admin` (change immediately!)
 
 ## ⚙️ Configuration
 
