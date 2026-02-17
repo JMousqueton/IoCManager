@@ -22,19 +22,20 @@ load_dotenv()
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-def download_geolite2_asn(license_key=None, verify_ssl=True):
+def download_geolite2_asn(account_id=None, license_key=None, verify_ssl=True):
     """Download MaxMind GeoLite2 ASN database (CSV format)"""
-    result = download_geolite2_database('GeoLite2-ASN-CSV', license_key, verify_ssl)
+    result = download_geolite2_database('GeoLite2-ASN-CSV', account_id, license_key, verify_ssl)
     # Files are now in data directory, result returns the data_dir
     return result
 
 
-def download_geolite2_database(edition_id, license_key=None, verify_ssl=True):
+def download_geolite2_database(edition_id, account_id=None, license_key=None, verify_ssl=True):
     """
     Generic function to download any MaxMind GeoLite2 database
 
     Args:
         edition_id: Database edition (e.g., 'GeoLite2-Country', 'GeoLite2-City', 'GeoLite2-ASN-CSV')
+        account_id: MaxMind account ID (required since January 2023)
         license_key: MaxMind license key
         verify_ssl: Whether to verify SSL certificates (default: True)
 
@@ -49,20 +50,31 @@ def download_geolite2_database(edition_id, license_key=None, verify_ssl=True):
         print("\n⚠ SSL certificate verification is disabled")
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    # Get license key
+    # Get account ID and license key
+    if not account_id:
+        account_id = os.getenv('MAXMIND_ACCOUNT_ID', '').strip()
+
     if not license_key:
-        # Try to get from environment variable
         license_key = os.getenv('MAXMIND_LICENSE_KEY', '').strip()
 
+    if (not account_id or account_id == 'your-maxmind-account-id-here' or
+            not license_key or license_key == 'your-maxmind-license-key-here'):
+        print("\nMaxMind requires an Account ID and License Key to download GeoLite2 databases.")
+        print("Sign up or log in to get your credentials:")
+        print("https://www.maxmind.com/en/geolite2/signup")
+        print("\nYou can set them in .env file:")
+        print("  MAXMIND_ACCOUNT_ID=your-account-id-here")
+        print("  MAXMIND_LICENSE_KEY=your-license-key-here\n")
+
+        if not account_id or account_id == 'your-maxmind-account-id-here':
+            account_id = input("Enter your MaxMind Account ID (or 'skip' to skip download): ").strip()
+            if account_id.lower() == 'skip':
+                print(f"\n⚠ Skipping {edition_id} download")
+                return None
+
         if not license_key or license_key == 'your-maxmind-license-key-here':
-            print("\nMaxMind requires a free license key to download GeoLite2 databases.")
-            print("If you don't have one, register at:")
-            print("https://www.maxmind.com/en/geolite2/signup")
-            print("\nYou can set it in .env file: MAXMIND_LICENSE_KEY=your-key-here\n")
-
-            license_key = input("Enter your MaxMind license key (or 'skip' to skip download): ").strip()
-
-            if license_key.lower() == 'skip':
+            license_key = input("Enter your MaxMind License Key: ").strip()
+            if not license_key:
                 print(f"\n⚠ Skipping {edition_id} download")
                 return None
 
@@ -72,12 +84,13 @@ def download_geolite2_database(edition_id, license_key=None, verify_ssl=True):
 
     # Determine file extension based on edition
     suffix = 'zip' if 'CSV' in edition_id else 'tar.gz'
-    url = f"https://download.maxmind.com/app/geoip_download?edition_id={edition_id}&license_key={license_key}&suffix={suffix}"
+    url = f"https://download.maxmind.com/geoip/databases/{edition_id}/download?suffix={suffix}"
 
     print(f"\n1. Downloading {edition_id}...")
 
     try:
-        response = requests.get(url, stream=True, timeout=60, verify=verify_ssl)
+        response = requests.get(url, stream=True, timeout=60, verify=verify_ssl,
+                                auth=(account_id, license_key))
         response.raise_for_status()
 
         # Save file
@@ -160,20 +173,21 @@ def download_geolite2_database(edition_id, license_key=None, verify_ssl=True):
     except requests.exceptions.RequestException as e:
         print(f"\n✗ Error downloading database: {e}")
         print("\nPossible issues:")
-        print("  - Invalid license key")
+        print("  - Invalid Account ID or License Key")
         print("  - Network connection problem")
         print("  - MaxMind service unavailable")
+        print("  - Verify credentials at: https://www.maxmind.com/en/account")
         return None
 
 
-def download_geolite2_country(license_key=None, verify_ssl=True):
+def download_geolite2_country(account_id=None, license_key=None, verify_ssl=True):
     """Download MaxMind GeoLite2 Country database"""
-    return download_geolite2_database('GeoLite2-Country', license_key, verify_ssl)
+    return download_geolite2_database('GeoLite2-Country', account_id, license_key, verify_ssl)
 
 
-def download_geolite2_city(license_key=None, verify_ssl=True):
+def download_geolite2_city(account_id=None, license_key=None, verify_ssl=True):
     """Download MaxMind GeoLite2 City database"""
-    return download_geolite2_database('GeoLite2-City', license_key, verify_ssl)
+    return download_geolite2_database('GeoLite2-City', account_id, license_key, verify_ssl)
 
 def create_dummy_db():
     """Create a dummy database file for development"""
@@ -208,6 +222,11 @@ def main():
         help='Disable SSL certificate verification (use with caution)'
     )
     parser.add_argument(
+        '--account-id',
+        type=str,
+        help='MaxMind account ID (skip interactive prompt)'
+    )
+    parser.add_argument(
         '--license-key',
         type=str,
         help='MaxMind license key (skip interactive prompt)'
@@ -215,7 +234,7 @@ def main():
     parser.add_argument(
         '--auto',
         action='store_true',
-        help='Automatic mode: download all databases using API key from .env (option 4)'
+        help='Automatic mode: download all databases using credentials from .env (option 4)'
     )
     args = parser.parse_args()
 
@@ -248,6 +267,7 @@ def main():
         print("DOWNLOADING ASN DATABASE")
         print("="*60)
         source_dir = download_geolite2_asn(
+            account_id=args.account_id,
             license_key=args.license_key,
             verify_ssl=verify_ssl
         )
@@ -257,6 +277,7 @@ def main():
         print("DOWNLOADING COUNTRY DATABASE")
         print("="*60)
         download_geolite2_country(
+            account_id=args.account_id,
             license_key=args.license_key,
             verify_ssl=verify_ssl
         )
@@ -266,6 +287,7 @@ def main():
         print("DOWNLOADING CITY DATABASE")
         print("="*60)
         download_geolite2_city(
+            account_id=args.account_id,
             license_key=args.license_key,
             verify_ssl=verify_ssl
         )
@@ -275,35 +297,47 @@ def main():
         print("DOWNLOADING ALL DATABASES")
         print("="*60)
 
-        # Get license key once if not provided
-        license_key = args.license_key
-        if not license_key:
-            # Try to get from environment variable
-            license_key = os.getenv('MAXMIND_LICENSE_KEY', '').strip()
+        # Get account ID and license key once if not provided
+        account_id = args.account_id or os.getenv('MAXMIND_ACCOUNT_ID', '').strip()
+        license_key = args.license_key or os.getenv('MAXMIND_LICENSE_KEY', '').strip()
 
-            if not license_key or license_key == 'your-maxmind-license-key-here':
-                # In auto mode, exit with error if no valid key
-                if args.auto:
-                    print("\n✗ ERROR: No valid MAXMIND_LICENSE_KEY found in .env file")
-                    print("Please set MAXMIND_LICENSE_KEY in .env or use --license-key argument")
-                    sys.exit(1)
+        credentials_valid = (
+            account_id and account_id != 'your-maxmind-account-id-here' and
+            license_key and license_key != 'your-maxmind-license-key-here'
+        )
 
-                print("\nMaxMind requires a free license key to download GeoLite2 databases.")
-                print("If you don't have one, register at:")
-                print("https://www.maxmind.com/en/geolite2/signup")
-                print("\nYou can set it in .env file: MAXMIND_LICENSE_KEY=your-key-here\n")
-                license_key = input("Enter your MaxMind license key (or 'skip' to skip download): ").strip()
+        if not credentials_valid:
+            if args.auto:
+                print("\n✗ ERROR: No valid MaxMind credentials found in .env file")
+                print("Please set MAXMIND_ACCOUNT_ID and MAXMIND_LICENSE_KEY in .env")
+                print("or use --account-id and --license-key arguments")
+                sys.exit(1)
 
-                if license_key.lower() == 'skip':
+            print("\nMaxMind requires an Account ID and License Key to download GeoLite2 databases.")
+            print("Sign up or log in at: https://www.maxmind.com/en/geolite2/signup")
+            print("\nYou can set them in .env file:")
+            print("  MAXMIND_ACCOUNT_ID=your-account-id-here")
+            print("  MAXMIND_LICENSE_KEY=your-license-key-here\n")
+
+            if not account_id or account_id == 'your-maxmind-account-id-here':
+                account_id = input("Enter your MaxMind Account ID (or 'skip' to skip): ").strip()
+                if account_id.lower() == 'skip':
                     print("\n⚠ Skipping database downloads")
-                    license_key = None
-            else:
-                print(f"\n✓ Using license key from .env: {license_key[:8]}...{license_key[-4:]}")
+                    account_id = None
 
-        if license_key:
+            if account_id and (not license_key or license_key == 'your-maxmind-license-key-here'):
+                license_key = input("Enter your MaxMind License Key: ").strip()
+                if not license_key:
+                    account_id = None
+        else:
+            print(f"\n✓ Using Account ID from .env: {account_id}")
+            print(f"✓ Using License Key from .env: {license_key[:8]}...{license_key[-4:]}")
+
+        if account_id and license_key:
             # Download ASN
             print("\n[1/3] ASN Database")
             asn_dir = download_geolite2_asn(
+                account_id=account_id,
                 license_key=license_key,
                 verify_ssl=verify_ssl
             )
@@ -311,6 +345,7 @@ def main():
             # Download Country
             print("\n[2/3] Country Database")
             download_geolite2_country(
+                account_id=account_id,
                 license_key=license_key,
                 verify_ssl=verify_ssl
             )
@@ -318,6 +353,7 @@ def main():
             # Download City
             print("\n[3/3] City Database")
             download_geolite2_city(
+                account_id=account_id,
                 license_key=license_key,
                 verify_ssl=verify_ssl
             )

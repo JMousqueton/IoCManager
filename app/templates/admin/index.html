@@ -411,25 +411,35 @@
                         </div>
                     </div>
 
-                    <!-- MaxMind License Key -->
+                    <!-- MaxMind GeoIP -->
                     <div class="mb-4">
                         <h6 class="text-primary mb-3">
                             <i class="bi bi-geo-alt"></i> MaxMind GeoIP
                         </h6>
+                        <div class="mb-3">
+                            <label class="form-label">Account ID</label>
+                            <input type="text" class="form-control font-monospace"
+                                   name="maxmind_account_id"
+                                   value="{{ api_keys.MAXMIND_ACCOUNT_ID }}"
+                                   placeholder="Enter MaxMind Account ID">
+                            <small class="form-text text-muted">
+                                Your numeric Account ID from <a href="https://www.maxmind.com/en/account/login" target="_blank">MaxMind Account</a>
+                            </small>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">License Key</label>
                             <div class="input-group">
                                 <input type="password" class="form-control font-monospace"
                                        name="maxmind_key"
                                        value="{{ api_keys.MAXMIND_LICENSE_KEY }}"
-                                       placeholder="Enter MaxMind license key">
+                                       placeholder="Enter MaxMind License Key">
                                 <button class="btn btn-outline-secondary" type="button"
                                         onclick="togglePassword(this)" title="Show/Hide">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
                             <small class="form-text text-muted">
-                                Get your license key at: <a href="https://www.maxmind.com/en/account/login" target="_blank">MaxMind Account</a>
+                                Both Account ID and License Key are required since January 2023.
                             </small>
                         </div>
                     </div>

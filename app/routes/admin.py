@@ -359,6 +359,7 @@ def api_keys():
     api_keys = {
         'VIRUSTOTAL_API_KEY': '',
         'URLSCAN_API_KEY': '',
+        'MAXMIND_ACCOUNT_ID': '',
         'MAXMIND_LICENSE_KEY': ''
     }
 
@@ -387,6 +388,7 @@ def save_api_keys():
     """Save API keys to .env file"""
     virustotal_key = request.form.get('virustotal_key', '').strip()
     urlscan_key = request.form.get('urlscan_key', '').strip()
+    maxmind_account_id = request.form.get('maxmind_account_id', '').strip()
     maxmind_key = request.form.get('maxmind_key', '').strip()
 
     env_path = Path('.env')
@@ -402,6 +404,7 @@ def save_api_keys():
         keys_to_update = {
             'VIRUSTOTAL_API_KEY': virustotal_key,
             'URLSCAN_API_KEY': urlscan_key,
+            'MAXMIND_ACCOUNT_ID': maxmind_account_id,
             'MAXMIND_LICENSE_KEY': maxmind_key
         }
 
@@ -441,7 +444,7 @@ def save_api_keys():
                         if 'URLScan' in line or 'URLSCAN' in line:
                             insert_index = i + 1
                             break
-                elif key == 'MAXMIND_LICENSE_KEY':
+                elif key in ('MAXMIND_ACCOUNT_ID', 'MAXMIND_LICENSE_KEY'):
                     # Find MaxMind section
                     for i, line in enumerate(new_lines):
                         if 'MaxMind' in line or 'MAXMIND' in line:
@@ -485,6 +488,7 @@ def reload_config():
         config_keys_to_update = {
             'VIRUSTOTAL_API_KEY': os.getenv('VIRUSTOTAL_API_KEY', ''),
             'URLSCAN_API_KEY': os.getenv('URLSCAN_API_KEY', ''),
+            'MAXMIND_ACCOUNT_ID': os.getenv('MAXMIND_ACCOUNT_ID', ''),
             'MAXMIND_LICENSE_KEY': os.getenv('MAXMIND_LICENSE_KEY', ''),
             'VIRUSTOTAL_NO_SSL_CHECK': os.getenv('VIRUSTOTAL_NO_SSL_CHECK', 'False').lower() == 'true',
             'URLSCAN_NO_SSL_CHECK': os.getenv('URLSCAN_NO_SSL_CHECK', 'False').lower() == 'true',
