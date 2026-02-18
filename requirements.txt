@@ -27,7 +27,7 @@ python-whois==0.9.4
 # Validation
 email-validator==2.2.0
 validators==0.33.0
-dnspython==2.6.1
+dnspython==2.8.0
 
 # WSGI Server (Production)
 gunicorn==22.0.0
