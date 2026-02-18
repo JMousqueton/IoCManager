@@ -45,7 +45,7 @@ python-dateutil==2.9.0
 # Markdown & Content
 markdown==3.6
 bleach==6.1.0
-pymdown-extensions==10.16.1
+pymdown-extensions==10.21
 
 # HTML Parsing
 beautifulsoup4==4.12.3
