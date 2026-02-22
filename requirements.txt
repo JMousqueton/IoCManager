@@ -13,7 +13,7 @@ Flask-Mail==0.10.0
 alembic==1.13.2
 
 # Environment & Configuration
-python-dotenv==1.0.1
+python-dotenv==1.2.1
 
 # HTTP & API Clients
 requests==2.32.4
