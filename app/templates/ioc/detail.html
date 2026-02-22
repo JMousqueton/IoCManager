@@ -167,9 +167,16 @@
         {% if ioc.ioc_type.name in ['IPv4', 'IPv6', 'SHA256', 'MD5', 'SHA1', 'URL', 'Domain'] %}
         <form method="POST" action="{{ url_for('ioc.enrich', id=ioc.id) }}" style="display: inline;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if ioc.get_enrichment() %}
+            <input type="hidden" name="force_refresh" value="1">
+            <button type="submit" class="btn btn-warning" title="Refresh {% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}GeoIP{% elif ioc.ioc_type.name == 'URL' %}URLScan.io{% elif ioc.ioc_type.name == 'Domain' %}WHOIS & DNS{% else %}VirusTotal{% endif %} enrichment data">
+                <i class="bi bi-arrow-clockwise"></i> Refresh IOC Enrichment
+            </button>
+            {% else %}
             <button type="submit" class="btn btn-info" title="Enrich with {% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}GeoIP{% elif ioc.ioc_type.name == 'URL' %}URLScan.io{% elif ioc.ioc_type.name == 'Domain' %}WHOIS & DNS{% else %}VirusTotal{% endif %} data">
                 <i class="bi bi-{% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}globe{% elif ioc.ioc_type.name == 'URL' %}search{% elif ioc.ioc_type.name == 'Domain' %}diagram-3{% else %}shield-check{% endif %}"></i> Enrich IOC
             </button>
+            {% endif %}
         </form>
         {% endif %}
         {% endif %}
@@ -2098,9 +2105,16 @@
                 {% if ioc.ioc_type.name in ['IPv4', 'IPv6', 'SHA256', 'MD5', 'SHA1', 'URL', 'Domain'] %}
                 <form method="POST" action="{{ url_for('ioc.enrich', id=ioc.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if ioc.get_enrichment() %}
+                    <input type="hidden" name="force_refresh" value="1">
+                    <button type="submit" class="btn btn-outline-warning w-100 mb-2">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh IOC Enrichment
+                    </button>
+                    {% else %}
                     <button type="submit" class="btn btn-outline-primary w-100 mb-2">
                         <i class="bi bi-{% if ioc.ioc_type.name in ['IPv4', 'IPv6'] %}globe{% elif ioc.ioc_type.name == 'URL' %}search{% elif ioc.ioc_type.name == 'Domain' %}diagram-3{% else %}shield-check{% endif %}"></i> Enrich IOC
                     </button>
+                    {% endif %}
                 </form>
                 {% endif %}
 

@@ -439,6 +439,30 @@ def enrich(id):
 
     ioc_type_name = ioc.ioc_type.name
 
+    # If force_refresh requested, clear relevant cache entries before enriching
+    if request.form.get('force_refresh') == '1':
+        from app.models.cache import VirusTotalCache, URLScanCache, URLEnrichmentCache, DomainEnrichmentCache
+        value = ioc.value.strip()
+        try:
+            if ioc_type_name in ['SHA256', 'MD5', 'SHA1']:
+                cache_entry = VirusTotalCache.query.filter_by(hash_value=value.lower()).first()
+                if cache_entry:
+                    db.session.delete(cache_entry)
+            elif ioc_type_name == 'URL':
+                urlscan_entry = URLScanCache.query.filter_by(url=value).first()
+                if urlscan_entry:
+                    db.session.delete(urlscan_entry)
+                url_enrich_entry = URLEnrichmentCache.query.filter_by(url=value).first()
+                if url_enrich_entry:
+                    db.session.delete(url_enrich_entry)
+            elif ioc_type_name == 'Domain':
+                domain_entry = DomainEnrichmentCache.query.filter_by(domain=value.lower()).first()
+                if domain_entry:
+                    db.session.delete(domain_entry)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
     # Handle IP address enrichment (GeoIP)
     if ioc_type_name in ['IPv4', 'IPv6']:
         from app.services.geoip import get_geoip_service
