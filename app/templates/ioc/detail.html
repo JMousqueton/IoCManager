@@ -148,6 +148,16 @@
 .tab-content-area.active {
     display: block;
 }
+.btn-hunting {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+.btn-hunting:hover {
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+    color: white;
+}
 </style>
 
 <!-- IOC Graph CSS -->
@@ -155,11 +165,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="row mb-3">
-    <div class="col-md-6">
+<div class="row mb-3 align-items-center">
+    <div class="col-auto">
         <h1><i class="bi bi-shield-check"></i> IOC Details</h1>
     </div>
-    <div class="col-md-6 text-end">
+    <div class="col text-end">
         {% if current_user.can_modify_ioc(ioc) %}
         <a href="{{ url_for('ioc.edit', id=ioc.id) }}" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Edit
@@ -194,6 +204,11 @@
         <!-- Generate YARA button -->
         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#yaraModal" onclick="generateYara({{ ioc.id }})" title="Generate YARA rule for detection">
             <i class="bi bi-code-square"></i> Generate YARA
+        </button>
+
+        <!-- Hunting Queries button -->
+        <button type="button" class="btn btn-hunting" data-bs-toggle="modal" data-bs-target="#huntingModal" data-ioc-id="{{ ioc.id }}" title="Generate hunting queries for Splunk, KQL, Sigma and CrowdStrike">
+            <i class="bi bi-binoculars"></i> Hunting Queries
         </button>
 
         <a href="{{ url_for('ioc.list') }}" class="btn btn-secondary">
@@ -2235,6 +2250,101 @@
     </div>
 </div>
 
+<!-- Hunting Queries Modal -->
+<div class="modal fade" id="huntingModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color: #6f42c1;">
+                <h5 class="modal-title"><i class="bi bi-binoculars"></i> Hunting Queries</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="hunting-loading" class="text-center py-4">
+                    <div class="spinner-border" style="color: #6f42c1;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Generating hunting queries...</p>
+                </div>
+                <div id="hunting-content" style="display: none;">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        Ready-to-use queries for your SIEM/EDR. Adjust the timeframe and index/table names to match your environment.
+                    </div>
+                    <!-- Platform tabs -->
+                    <ul class="nav nav-tabs" id="huntingTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-splunk" data-bs-toggle="tab" data-bs-target="#pane-splunk" type="button" role="tab">
+                                <img src="https://www.vectorlogo.zone/logos/splunk/splunk-icon.svg" width="16" height="16" class="me-1" onerror="this.style.display='none'">
+                                Splunk
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-kql" data-bs-toggle="tab" data-bs-target="#pane-kql" type="button" role="tab">
+                                <i class="bi bi-microsoft me-1"></i>KQL / Sentinel
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-sigma" data-bs-toggle="tab" data-bs-target="#pane-sigma" type="button" role="tab">
+                                <i class="bi bi-sigma me-1"></i>Sigma
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-crowdstrike" data-bs-toggle="tab" data-bs-target="#pane-crowdstrike" type="button" role="tab">
+                                <i class="bi bi-bug me-1"></i>CrowdStrike
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 rounded-bottom p-3" id="huntingTabContent">
+                        <!-- Splunk -->
+                        <div class="tab-pane fade show active" id="pane-splunk" role="tabpanel">
+                            <pre id="hunting-splunk" class="bg-light p-3 rounded mb-2" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;"><code></code></pre>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="copyHuntingQuery('splunk')">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="downloadHuntingQuery('splunk', 'spl')">
+                                <i class="bi bi-download"></i> Download .spl
+                            </button>
+                        </div>
+                        <!-- KQL -->
+                        <div class="tab-pane fade" id="pane-kql" role="tabpanel">
+                            <pre id="hunting-kql" class="bg-light p-3 rounded mb-2" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;"><code></code></pre>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="copyHuntingQuery('kql')">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="downloadHuntingQuery('kql', 'kql')">
+                                <i class="bi bi-download"></i> Download .kql
+                            </button>
+                        </div>
+                        <!-- Sigma -->
+                        <div class="tab-pane fade" id="pane-sigma" role="tabpanel">
+                            <pre id="hunting-sigma" class="bg-light p-3 rounded mb-2" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;"><code></code></pre>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="copyHuntingQuery('sigma')">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="downloadHuntingQuery('sigma', 'yml')">
+                                <i class="bi bi-download"></i> Download .yml
+                            </button>
+                        </div>
+                        <!-- CrowdStrike -->
+                        <div class="tab-pane fade" id="pane-crowdstrike" role="tabpanel">
+                            <pre id="hunting-crowdstrike" class="bg-light p-3 rounded mb-2" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;"><code></code></pre>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="copyHuntingQuery('crowdstrike')">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="downloadHuntingQuery('crowdstrike', 'fql')">
+                                <i class="bi bi-download"></i> Download .fql
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Certificate Details Modal -->
 <div class="modal fade" id="certDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -2509,7 +2619,86 @@ function downloadYaraRule() {
     window.URL.revokeObjectURL(url);
 }
 
-// Comment functions
+// ─── Hunting Queries ──────────────────────────────────────────────────────────
+
+let huntingQueries = {};
+let huntingIocId = null;
+
+// Triggered by Bootstrap modal show event (reads data-ioc-id from button)
+document.getElementById('huntingModal').addEventListener('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    if (button && button.dataset.iocId) {
+        generateHuntingQueries(button.dataset.iocId);
+    }
+});
+
+function generateHuntingQueries(iocId) {
+    huntingIocId = iocId;
+    huntingQueries = {};
+
+    // Show loading, hide content
+    document.getElementById('hunting-loading').style.display = 'block';
+    document.getElementById('hunting-content').style.display = 'none';
+
+    fetch(`/iocs/${iocId}/generate-hunting-queries`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                huntingQueries = data.queries;
+
+                document.getElementById('hunting-splunk').querySelector('code').textContent     = data.queries.splunk;
+                document.getElementById('hunting-kql').querySelector('code').textContent        = data.queries.kql;
+                document.getElementById('hunting-sigma').querySelector('code').textContent      = data.queries.sigma;
+                document.getElementById('hunting-crowdstrike').querySelector('code').textContent = data.queries.crowdstrike;
+
+                document.getElementById('hunting-loading').style.display = 'none';
+                document.getElementById('hunting-content').style.display = 'block';
+            } else {
+                document.getElementById('hunting-loading').innerHTML =
+                    '<div class="alert alert-danger">Failed to generate hunting queries.</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Hunting query generation failed:', err);
+            document.getElementById('hunting-loading').innerHTML =
+                '<div class="alert alert-danger">Error generating hunting queries.</div>';
+        });
+}
+
+function copyHuntingQuery(platform) {
+    const text = huntingQueries[platform] || '';
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target.closest('button');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-primary');
+        setTimeout(() => {
+            btn.innerHTML = original;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+    });
+}
+
+function downloadHuntingQuery(platform, extension) {
+    const text = huntingQueries[platform] || '';
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ioc_${huntingIocId}_hunting_${platform}.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// ─── Comment functions ─────────────────────────────────────────────────────────
+
 function toggleEditForm(commentId) {
     const contentDiv = document.getElementById(`content-${commentId}`);
     const editForm = document.getElementById(`edit-form-${commentId}`);

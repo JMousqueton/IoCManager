@@ -834,6 +834,25 @@ def extend_expiration(id):
 
 
 
+@ioc_bp.route('/<int:id>/generate-hunting-queries')
+@login_required
+def generate_hunting_queries(id):
+    """Generate hunting queries for Splunk, KQL, Sigma and CrowdStrike"""
+    from app.services.hunting_query_generator import HuntingQueryGenerator
+
+    ioc = IOC.query.get_or_404(id)
+
+    queries = HuntingQueryGenerator.generate_queries(ioc)
+
+    return jsonify({
+        'success': True,
+        'queries': queries,
+        'ioc_id': ioc.id,
+        'ioc_value': ioc.value[:50] + '...' if len(ioc.value) > 50 else ioc.value,
+        'ioc_type': ioc.ioc_type.name,
+    })
+
+
 @ioc_bp.route('/<int:id>/generate-yara')
 @login_required
 def generate_yara(id):
