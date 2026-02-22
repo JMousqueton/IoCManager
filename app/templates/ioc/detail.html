@@ -632,7 +632,13 @@
                 <hr class="my-3">
                 <div class="row mb-0">
                     <div class="col-md-3"><strong>Data Source:</strong></div>
-                    <div class="col-md-9"><small class="text-muted">{{ enrichment.source }}</small></div>
+                    <div class="col-md-9">
+                        <small class="text-muted">{{ enrichment.source }}</small>
+                        {% if enrichment.enriched_at %}
+                        <span class="badge bg-secondary ms-2">Refreshed</span>
+                        <small class="text-muted ms-1">{{ enrichment.enriched_at[:19] }}</small>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -867,6 +873,11 @@
                         {% if enrichment.cached %}
                         <span class="badge bg-info text-dark ms-2">Cached</span>
                         {% if enrichment.cached_at %}<small class="text-muted ms-1">{{ enrichment.cached_at[:19] }}</small>{% endif %}
+                        {% elif enrichment.enriched_at %}
+                        <span class="badge bg-secondary ms-2">Refreshed</span>
+                        <small class="text-muted ms-1">{{ enrichment.enriched_at[:19] }}</small>
+                        {% elif enrichment.last_analysis %}
+                        <small class="text-muted ms-1">Last analysis: {{ enrichment.last_analysis|string|replace('T', ' ')|truncate(19, true, '') }}</small>
                         {% endif %}
                     </div>
                 </div>
@@ -1647,6 +1658,8 @@
                         <small class="text-muted">
                             {% if enrichment.cached_at %}
                             <i class="bi bi-clock"></i> Cached {{ enrichment.cached_at[:19] }}
+                            {% elif enrichment.enriched_at %}
+                            <i class="bi bi-arrow-clockwise"></i> Refreshed {{ enrichment.enriched_at[:19] }}
                             {% endif %}
                         </small>
                     </div>

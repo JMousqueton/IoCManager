@@ -8,6 +8,7 @@ from app.models.tag import Tag
 from app.models.audit import AuditLog
 from app.forms.ioc import IOCForm, IOCSearchForm, IOCBulkImportForm
 from sqlalchemy import or_
+from datetime import datetime
 
 ioc_bp = Blueprint('ioc', __name__)
 
@@ -62,7 +63,7 @@ def list():
 
     iocs = pagination.items
 
-    from datetime import datetime
+
     return render_template('ioc/list.html',
                            iocs=iocs,
                            pagination=pagination,
@@ -146,7 +147,7 @@ def create():
 @login_required
 def detail(id):
     """View IOC details"""
-    from datetime import datetime
+
     from app.models.comment import Comment
 
     ioc = IOC.query.get_or_404(id)
@@ -328,7 +329,7 @@ def edit(id):
     form.tags.data = ', '.join([tag.name for tag in ioc.tags])
 
     # Populate expiration field (remaining days)
-    from datetime import datetime
+
     if ioc.expires_at:
         remaining_days = (ioc.expires_at - datetime.utcnow()).days
         form.expiration_days.data = max(1, remaining_days)
@@ -489,6 +490,8 @@ def enrich(id):
                     enrichment_data['asn'] = asn_data
 
                 # Store enrichment data in JSON format
+            
+                enrichment_data['enriched_at'] = datetime.utcnow().isoformat()
                 ioc.set_enrichment(enrichment_data)
 
                 db.session.commit()
@@ -530,6 +533,8 @@ def enrich(id):
 
             if enrichment_data and enrichment_data.get('status') == 'success':
                 # Store enrichment data in JSON format
+            
+                enrichment_data['enriched_at'] = datetime.utcnow().isoformat()
                 ioc.set_enrichment(enrichment_data)
 
                 db.session.commit()
@@ -712,6 +717,8 @@ def enrich(id):
         # Store combined enrichment data if we got any results
         if success_count > 0:
             combined_enrichment['status'] = 'success'
+        
+            combined_enrichment['enriched_at'] = datetime.utcnow().isoformat()
             ioc.set_enrichment(combined_enrichment)
             db.session.commit()
 
@@ -745,6 +752,8 @@ def enrich(id):
 
             if enrichment_data and enrichment_data.get('status') == 'success':
                 # Store enrichment data in JSON format
+            
+                enrichment_data['enriched_at'] = datetime.utcnow().isoformat()
                 ioc.set_enrichment(enrichment_data)
                 db.session.commit()
 
